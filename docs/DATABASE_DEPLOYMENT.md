@@ -2,7 +2,7 @@
 
 ## Estado de esta entrega
 
-Solo se ejecutaron migraciones en PostgreSQL efímero de Docker, aislado de la red, sin puertos publicados ni volúmenes. No se vinculó un proyecto remoto, no se configuraron credenciales y no se ejecutaron migraciones en producción.
+Las migraciones se ejecutaron únicamente en bases PostgreSQL efímeras locales. Las pruebas SQL usan un contenedor sin red; la integración Auth/PostgREST usa una red privada sin NAT de salida y puertos HTTP solo en loopback, sin publicar PostgreSQL ni conservar volúmenes. No se vinculó un proyecto remoto, no se utilizaron credenciales reales y no se ejecutaron migraciones en producción.
 
 Las versiones son:
 

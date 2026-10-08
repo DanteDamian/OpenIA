@@ -12,7 +12,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Sin configuración de Supabase, la aplicación muestra un acceso pendiente de configuración y bloquea el espacio administrativo. No contiene datos financieros de ejemplo ni persistencia. Clientes, Proyectos, Cotizaciones, Contratos, Facturación, Gastos e Inteligencia Artificial tienen rutas propias y estados vacíos. Incluye login/logout con Supabase Auth y consulta/API de clientes; los demás módulos mantienen estados vacíos.
+Sin configuración de Supabase, la aplicación muestra un acceso pendiente de configuración y bloquea el espacio administrativo. No contiene datos financieros de ejemplo. La consulta y API de clientes utilizan persistencia Supabase cuando se configura el servicio. Clientes, Proyectos, Cotizaciones, Contratos, Facturación, Gastos e Inteligencia Artificial tienen rutas propias. Incluye login/logout con Supabase Auth y consulta/API de clientes; los demás módulos mantienen estados vacíos.
 
 ## Supabase
 
@@ -20,7 +20,7 @@ Configurar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e
 
 `src/lib/supabase/server.ts` maneja sesiones en servidor con cookies HttpOnly; `src/proxy.ts` verifica y renueva sesiones. Nunca se usa getSession como prueba de identidad. La aplicación no tiene un cliente Supabase autenticado en navegador ni usa service_role. Para desarrollo local se admite HTTP solo en loopback; los destinos remotos requieren HTTPS.
 
-Antes de cargar datos reales: definir esquema y migraciones, RLS por organización, autenticación, validación de sesión en servidor (claims o usuario verificado), renovación de sesión y autorización de cada operación. Las migraciones y el flujo de autenticación están implementados pero no se aplicaron a un proyecto remoto.
+El esquema, RLS por empresa, autenticación, renovación de sesión y autorización se verificaron localmente. Antes de cargar datos reales, validar su configuración y permisos en un staging autorizado. Las migraciones y el flujo de autenticación están implementados pero no se aplicaron a un proyecto remoto.
 
 OpenAI y Alegra no están conectados y no requieren claves en esta etapa.
 
@@ -47,7 +47,7 @@ CI ejecuta instalación con lockfile, lint, tipos, pruebas y compilación. Resul
 
 ## Pull Request y Vercel
 
-Trabajar en `develop/aigenterra-finance-ai`. Publicar la rama y abrir un PR hacia la rama principal una vez exista una base remota. El repositorio original está vacío y no tiene `main`; no se crea una rama de producción de forma implícita.
+El incremento de base de datos y autenticación está en `feature/supabase-data-model`, PR #2 hacia `develop/aigenterra-finance-ai`. La rama `main` contiene una base inicial y el PR #1 de la aplicación permanece pendiente. No hacer merge ni desplegar producción automáticamente.
 
 En Vercel importar el repositorio con preset Next.js, Node.js 24, instalación `npm ci` y compilación `npm run build`. Asignar variables de Supabase a Preview cuando se vaya a probar la integración. Usar despliegues Preview del PR para revisión; producción requiere aprobación independiente. Ningún despliegue se realiza con esta entrega.
 
