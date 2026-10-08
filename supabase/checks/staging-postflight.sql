@@ -11,7 +11,7 @@ begin
     raise exception 'Expected reviewed postgres operator on PostgreSQL 17';
   end if;
   foreach object_name in array array['organizations','profiles','roles','organization_memberships',
-    'clients','contacts','opportunities','quotes','contracts','projects','invoices','payments','expenses'] loop
+    'clients','contacts','opportunities','quotes','contracts','projects','invoices','payments','expenses','project_work_items','cash_movements','assistant_requests'] loop
     relation_oid := to_regclass('public.' || object_name);
     if relation_oid is null or not exists (select 1 from pg_class
       where oid = relation_oid and relkind = 'r' and relrowsecurity and relforcerowsecurity
@@ -28,8 +28,8 @@ begin
     end if;
     application_oids := array_append(application_oids, relation_oid);
   end loop;
-  if (select count(*) from pg_policy where polrelid = any(application_oids)) <> 37 then
-    raise exception 'Expected 37 application policies';
+  if (select count(*) from pg_policy where polrelid = any(application_oids)) <> 45 then
+    raise exception 'Expected 45 application policies';
   end if;
   if (select array_agg(id order by id) from public.roles) is distinct from
     array['accountant','admin','manager','viewer']::text[] then
@@ -45,7 +45,7 @@ begin
     or has_table_privilege('service_role', 'private.organization_bootstrap_audit', 'SELECT,INSERT,UPDATE,DELETE') then
     raise exception 'Administrative objects exposed';
   end if;
-  if (select count(*) from pg_proc where pronamespace = 'private'::regnamespace) <> 6 then
+  if (select count(*) from pg_proc where pronamespace = 'private'::regnamespace) <> 7 then
     raise exception 'Unexpected private routines';
   end if;
   for routine in select p.*, pg_get_userbyid(p.proowner) owner_name from pg_proc p

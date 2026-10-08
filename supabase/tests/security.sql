@@ -24,7 +24,7 @@ begin
     checks := checks + 3;
   end loop;
   if (select count(*) from pg_policy where polrelid in
-      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 37 then
+      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 45 then
     raise exception 'Unexpected policy count';
   end if;
   if exists (select 1 from pg_policy where polrelid in
@@ -69,7 +69,7 @@ begin
     raise exception 'Private helper exposed';
   end if;
   if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='private' and 'search_path=""'=any(p.proconfig)) <> 6 then
+      where n.nspname='private' and 'search_path=""'=any(p.proconfig)) <> 7 then
     raise exception 'Private functions must pin empty search_path';
   end if;
 

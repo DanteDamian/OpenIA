@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { AppShell } from "../src/components/layout/app-shell";
+import { analyze } from "../src/lib/business/analytics";
 import { Dashboard } from "../src/features/dashboard/dashboard";
 vi.mock("next/navigation", () => ({
   usePathname: () => "/clientes",
@@ -35,13 +36,13 @@ describe("Navegación administrativa", () => {
     fireEvent.click(clients);
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
-  it("muestra indicadores vacíos y enlaces a los siete módulos", () => {
-    render(<Dashboard />);
-    expect(screen.getAllByLabelText("Sin datos")).toHaveLength(4);
+  it("muestra indicadores calculados y enlaces a los módulos operativos", () => {
+    render(<Dashboard summary={analyze({})} />);
+    expect(screen.getByRole("region", {name:"Indicadores financieros"})).toBeInTheDocument();
     const section = screen.getByRole("region", {
       name: "Módulos administrativos",
     });
-    expect(within(section).getAllByRole("link")).toHaveLength(7);
-    expect(screen.getByText("Sin proyectos registrados")).toBeInTheDocument();
+    expect(within(section).getAllByRole("link")).toHaveLength(9);
+    expect(screen.getByText("No hay alertas detectadas en los registros disponibles.")).toBeInTheDocument();
   });
 });

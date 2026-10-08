@@ -596,6 +596,36 @@ try {
     ).data.every((row) => row.user_id === users.viewer.id),
     "Membership policy cannot leak other identities",
   );
+  // Nuevas relaciones operativas: fixtures exclusivamente locales, sin importes.
+  const localProject = (await http("Manager creates nonfinancial project", `${restURL}/projects`, {
+    token: users.manager.token, method: "POST", headers: {Prefer:"return=representation"},
+    body: {organization_id:org,client_id:client.id,name:"Local project fixture"},
+  },201)).data[0];
+  const work = (await http("Manager creates assigned milestone", `${restURL}/project_work_items`, {
+    token:users.manager.token,method:"POST",headers:{Prefer:"return=representation"},
+    body:{organization_id:org,project_id:localProject.id,kind:"milestone",title:"Local milestone fixture",assignee_id:users.manager.id},
+  },201)).data[0];
+  check(validId(work.id),"Milestone persisted under RLS");
+  await http("Cross-tenant assignee rejected", `${restURL}/project_work_items`, {
+    token:users.manager.token,method:"POST",body:{organization_id:org,project_id:localProject.id,kind:"activity",title:"Denied fixture",assignee_id:users.outsider.id},
+  },409);
+  check((await http("Outsider cannot see milestones", `${restURL}/project_work_items`,{token:users.outsider.token})).data.length===0,"Work isolated by organization");
+  await http("Viewer cannot create activities",`${restURL}/project_work_items`,{
+    token:users.viewer.token,method:"POST",body:{organization_id:org,project_id:localProject.id,kind:"activity",title:"Denied fixture"},
+  },403);
+  for(let n=0;n<30;n++) await http(`Assistant quota local request ${n+1}`,`${restURL}/assistant_requests`,{
+    token:users.viewer.token,method:"POST",body:{organization_id:org},
+  },201);
+  await http("Assistant quota rejects request 31",`${restURL}/assistant_requests`,{
+    token:users.viewer.token,method:"POST",body:{organization_id:org},
+  },400);
+  await http("Assistant cannot reset consumption",`${restURL}/assistant_requests`,{
+    token:users.viewer.token,method:"DELETE",
+  },403);
+  await http("Assistant cannot impersonate another user",`${restURL}/assistant_requests`,{
+    token:users.manager.token,method:"POST",body:{organization_id:org,user_id:users.viewer.id},
+  },403);
+  check((await http("Other tenant cannot see consumption",`${restURL}/assistant_requests`,{token:users.outsider.token})).data.length===0,"Quota logs tenant isolation");
   // Access tokens forged with a different signing key fail before RLS.
   const forged =
     users.viewer.token.slice(0, -15) + randomBytes(12).toString("base64url");
@@ -749,6 +779,27 @@ try {
     },
     403,
   );
+  // Recorrido real del montaje local: sin gastos, cobros ni facturas ficticias.
+  for(const path of ["/","/oportunidades","/proyectos","/cotizaciones","/contratos","/gastos","/tesoreria","/actividades","/inteligencia-artificial","/configuracion",`/proyectos/${localProject.id}`]) {
+    const page=await http(`Operational page ${path}`,`${appURL}${path}`,{headers:{Cookie:cookie}});
+    check(typeof page.data==="string" && !page.data.includes('role="alert"'),`Operational page ${path} loads without data errors`);
+  }
+  const nextOpportunity=await http("Next creates opportunity without financial estimate",`${appURL}/api/business/oportunidades`,{
+    method:"POST",headers:{Origin:appURL,Cookie:cookie},body:{client_id:nextClient.data.client.id,title:"Local opportunity fixture",stage:"new"},
+  },201);
+  await http("Next edits scoped opportunity",`${appURL}/api/business/oportunidades?id=${nextOpportunity.data.record.id}`,{
+    method:"PATCH",headers:{Origin:appURL,Cookie:cookie},body:{client_id:nextClient.data.client.id,title:"Local opportunity updated",stage:"qualified"},
+  });
+  for(const resource of ["oportunidades","proyectos","cotizaciones","contratos","gastos","tesoreria","actividades"])
+    await http(`Viewer cannot write ${resource}`,`${appURL}/api/business/${resource}`,{method:"POST",headers:{Origin:appURL,Cookie:viewerCookie},body:{}},403);
+  const assistant=await http("Next deterministic assistant uses scoped data",`${appURL}/api/assistant`,{
+    method:"POST",headers:{Origin:appURL,Cookie:cookie},body:{message:"Resumen de proyectos"},
+  });
+  check(assistant.data.mode==="deterministic" && assistant.data.answer.includes("Local project fixture"),"Assistant is deterministic without external provider");
+  await http("Next business rejects foreign origin",`${appURL}/api/business/proyectos`,{method:"POST",headers:{Origin:"https://untrusted.invalid",Cookie:cookie},body:{}},403);
+  await http("Next rejects invalid monetary data before write",`${appURL}/api/business/gastos`,{
+    method:"POST",headers:{Origin:appURL,Cookie:cookie},body:{supplier_name:"Local",description:"Invalid fixture",category:"Local",amount:"NaN",incurred_on:"2026-10-08",status:"recorded"},
+  },400);
   const sessionCookie = viewerLogin.response.headers
     .getSetCookie()
     .find((item) => item.startsWith("sb-"))

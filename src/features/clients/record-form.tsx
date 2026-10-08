@@ -3,15 +3,17 @@ import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 export type Field = {
   name: string; label: string; required?: boolean; max: number;
-  type?: "email" | "tel" | "textarea"; options?: { value: string; label: string }[];
+  type?: "email" | "tel" | "textarea" | "date"; options?: { value: string; label: string }[];
   initial?: string | null; autoComplete?: string;
 };
 type Props = {
   title: string; triggerLabel: string; endpoint: string; method: "POST" | "PATCH";
   fields: Field[]; successMessage: string; help: string;
   validate?: (input: Record<string, string | null>) => boolean;
+  validationMessage?: string;
+  onFieldChange?: (name: string, value: string) => void;
 };
-export function RecordForm({ title, triggerLabel, endpoint, method, fields, successMessage, help, validate }: Props) {
+export function RecordForm({ title, triggerLabel, endpoint, method, fields, successMessage, help, validate, validationMessage, onFieldChange }: Props) {
   const router = useRouter();
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -32,7 +34,7 @@ export function RecordForm({ title, triggerLabel, endpoint, method, fields, succ
       setError("Completa los campos obligatorios; el nombre no puede contener solo espacios."); return;
     }
     if (validate && !validate(input)) {
-      setError("Revisa los datos. La identificación requiere tipo y número juntos y un correo válido si lo indicas."); return;
+      setError(validationMessage || "Revisa los datos. La identificación requiere tipo y número juntos y un correo válido si lo indicas."); return;
     }
     submitting.current = true; setBusy(true);
     try {
@@ -64,8 +66,8 @@ export function RecordForm({ title, triggerLabel, endpoint, method, fields, succ
         <legend className="sr-only">Datos del registro</legend>
         {fields.map((field, index) => {
           const common = { id: `${id}-${field.name}`, name: field.name, required: field.required,
-            defaultValue: field.initial || "", className: inputClass, autoFocus: index === 0 };
-          return <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+            defaultValue: field.initial || "", onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => onFieldChange?.(field.name, event.target.value), className: inputClass, autoFocus: index === 0 };
+          return <div key={`${field.name}:${field.options?.map(option => option.value).join("|") || ""}`} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
             <label htmlFor={common.id} className="text-sm font-medium">{field.label}{field.required && <span aria-hidden="true"> *</span>}</label>
             {field.options ? <select {...common}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
               : field.type === "textarea" ? <textarea {...common} maxLength={field.max} rows={3} />
