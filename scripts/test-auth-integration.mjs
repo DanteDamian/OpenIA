@@ -31,6 +31,7 @@ const docker = (...args) =>
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],
   }).trim();
+let databaseOperator = "supabase_admin";
 const sql = (query) =>
   execFileSync(
     "docker",
@@ -41,6 +42,8 @@ const sql = (query) =>
       "psql",
       "-X",
       "-U",
+      databaseOperator,
+      "-d",
       "postgres",
       "-v",
       "ON_ERROR_STOP=1",
@@ -194,7 +197,11 @@ try {
     "com.docker.network.bridge.enable_ip_masquerade=false",
     run,
   );
-  start("db", images.db, { POSTGRES_PASSWORD: password });
+  start("db", images.db, {
+    POSTGRES_USER: "supabase_admin",
+    POSTGRES_DB: "postgres",
+    POSTGRES_PASSWORD: password,
+  });
   await waitFor("PostgreSQL", () =>
     docker(
       "exec",
@@ -203,17 +210,19 @@ try {
       "-h",
       "127.0.0.1",
       "-U",
-      "postgres",
+      "supabase_admin",
     ).includes("accepting"),
   );
-  sql(`create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
+  sql(`create role postgres login nosuperuser createdb createrole bypassrls password '${password}';
+    alter database postgres owner to postgres;
+    create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
     create role authenticator login noinherit password '${password}'; grant anon, authenticated, service_role to authenticator;
     create role supabase_auth_admin login noinherit password '${password}';
     create schema auth authorization supabase_auth_admin;
     alter role supabase_auth_admin set search_path to auth;
     grant create on database postgres to supabase_auth_admin;
     grant usage on schema public,auth to anon,authenticated,service_role;
-    alter default privileges in schema public grant all on tables to anon,authenticated,service_role;`);
+    alter default privileges for role postgres in schema public grant all on tables to anon,authenticated,service_role;`);
   const authPort = start(
     "auth",
     images.auth,
@@ -249,10 +258,26 @@ try {
     select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),
       nullif(current_setting('request.jwt.claims',true),'')::jsonb ->> 'sub')::uuid $$;
     grant execute on function auth.uid() to anon,authenticated,service_role;`);
+  // Aproximar el operador gestionado: no depender del superusuario de la
+  // imagen estándar. Auth conserva su propietario; postgres recibe solo
+  // los permisos sobre Auth que necesitan las migraciones/bootstrap.
+  sql(`grant usage on schema auth to postgres;
+    grant select, references, trigger on auth.users to postgres;
+    grant anon, authenticated, service_role to postgres;`);
+  databaseOperator = "postgres";
+  check(sql("select not rolsuper and rolbypassrls from pg_roles where rolname='postgres'") === "t",
+    "Migration operator is not a superuser");
+  const preflight = readFileSync("supabase/checks/staging-preflight.sql", "utf8");
+  sql(preflight);
+  assertions++;
+  sqlDenied(`set role authenticated; ${preflight}`, "reviewed postgres migration operator");
   for (const migration of readdirSync("supabase/migrations")
     .filter((name) => name.endsWith(".sql"))
     .sort())
     sql(readFileSync(`supabase/migrations/${migration}`, "utf8"));
+  sqlDenied(preflight, "Initial deployment collides");
+  sql(readFileSync("supabase/checks/staging-postflight.sql", "utf8"));
+  assertions++;
   const restPort = start(
     "rest",
     images.rest,

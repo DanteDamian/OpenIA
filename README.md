@@ -55,6 +55,8 @@ En Vercel importar el repositorio con preset Next.js, Node.js 24, instalación `
 
 Migraciones versionadas en `supabase/migrations/`, sin aplicación remota automática. El modelo usa Supabase Auth y RLS por empresa. Ver [modelo de datos](docs/DATA_MODEL.md) y [procedimiento de despliegue](docs/DATABASE_DEPLOYMENT.md).
 
+La primera instalación y aceptación en Supabase gestionado están preparadas en [STAGING_RUNBOOK.md](docs/STAGING_RUNBOOK.md), con controles SQL de solo lectura antes y después de aplicar las tres versiones. La compatibilidad local con PostgreSQL 17 incluye un operador sin privilegios de superusuario; la validación del proyecto remoto sigue pendiente de acceso seguro y ejecución.
+
 ```sh
 npm run test:db
 ```

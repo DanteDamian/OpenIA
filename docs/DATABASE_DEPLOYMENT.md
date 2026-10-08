@@ -42,6 +42,8 @@ No se ejecutó este procedimiento con el stack completo en esta entrega: la vali
 
 ## Staging: revisión y aplicación por un operador
 
+Para la primera instalación, seguir el procedimiento detallado y los controles de solo lectura de [STAGING_RUNBOOK.md](STAGING_RUNBOOK.md). El proyecto staging todavía no existe; su creación y las acciones remotas no se ejecutaron. El nuevo runner local también verifica las migraciones con un operador PostgreSQL 17 sin privilegios de superusuario.
+
 Estos pasos son documentación, no una autorización de producción:
 
 1. Crear/seleccionar un proyecto de **staging nuevo**. Verificar su identidad y que no contiene tablas públicas incompatibles con esta base inicial. No apuntar la CLI a producción.
