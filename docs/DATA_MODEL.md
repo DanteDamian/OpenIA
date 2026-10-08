@@ -78,6 +78,6 @@ Esta base no es un libro contable ni un sistema de facturación electrónica. Fa
 
 No se calculan impuestos ni se validan normas tributarias en estas migraciones. OpenAI y Alegra siguen desconectados.
 
-## Administración de usuarios (migración 005 preparada)
+## Administración de usuarios (migración 005 aplicada)
 
-La nueva columna `organization_memberships.is_active` controla el acceso organizacional y `private.membership_audit` registra altas/cambios sin exponer la auditoría a clientes. Tres RPC administrativas validan identidad, rol, organización y protección del último administrador. Esta migración está preparada y probada localmente; no forma parte todavía del esquema remoto. Procedimiento y límites: [USER_MANAGEMENT.md](USER_MANAGEMENT.md).
+La nueva columna `organization_memberships.is_active` controla el acceso organizacional y `private.membership_audit` registra altas/cambios sin exponer la auditoría a clientes. Tres RPC administrativas validan identidad, rol, organización y protección del último administrador. La migración fue probada localmente y aplicada con aprobación explícita al proyecto `wafzklaioidpqqmbglff`, conservando las cuatro versiones anteriores y las membresías existentes. Procedimiento y límites: [USER_MANAGEMENT.md](USER_MANAGEMENT.md).
