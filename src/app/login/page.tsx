@@ -25,8 +25,7 @@ export default function Login() {
           </p>
         )}
         <p className="mt-6 text-xs leading-5 text-slate-500">
-          El registro público está deshabilitado. Solicita acceso al
-          administrador de tu empresa.
+          Solicita tu cuenta autorizada al administrador de tu empresa.
         </p>
       </section>
     </main>

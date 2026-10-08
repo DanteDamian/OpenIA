@@ -51,6 +51,8 @@ El incremento de base de datos y autenticación está en `feature/supabase-data-
 
 En Vercel importar el repositorio con preset Next.js, Node.js 24, instalación `npm ci` y compilación `npm run build`. Asignar variables de Supabase a Preview cuando se vaya a probar la integración. Usar despliegues Preview del PR para revisión; producción requiere aprobación independiente. Ningún despliegue se realiza con esta entrega.
 
+Consultar [conexión Auth en Vercel Preview](docs/VERCEL_PREVIEW_AUTH.md) para variables exactas, el problema de URL registrada como secreto proxy y las opciones Auth verificadas. El registro público está habilitado en el proyecto; esta entrega no modifica esa configuración.
+
 ## Base de datos v1
 
 Migraciones versionadas en `supabase/migrations/`, sin aplicación remota automática. El modelo usa Supabase Auth y RLS por empresa. Ver [modelo de datos](docs/DATA_MODEL.md) y [procedimiento de despliegue](docs/DATABASE_DEPLOYMENT.md).
