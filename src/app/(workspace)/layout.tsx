@@ -6,6 +6,6 @@ export default async function WorkspaceLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAccess();
-  return <AppShell>{children}</AppShell>;
+  const access = await requireAccess();
+  return <AppShell role={access.role}>{children}</AppShell>;
 }

@@ -13,18 +13,19 @@ export const getAccess = cache(async () => {
     error,
   } = await supabase.auth.getUser();
   if (error || !user) return { status: "unauthenticated" as const };
+  // Select all keeps login compatible before migration 005; missing is_active means legacy active.
   const { data: memberships, error: membershipError } = await supabase
     .from("organization_memberships")
-    .select("organization_id,role_id")
+    .select("*")
     .eq("user_id", user.id)
     .order("organization_id");
   if (membershipError) return { status: "unavailable" as const };
   const selected = (await cookies()).get("aigenterra-org")?.value;
   const membership = selected
-    ? memberships?.find(
+    ? memberships?.filter(item => item.is_active !== false).find(
         (item) => validUuid(selected) && item.organization_id === selected,
       )
-    : memberships?.[0];
+    : memberships?.find(item => item.is_active !== false);
   if (!membership) return { status: "forbidden" as const };
   return {
     status: "authorized" as const,

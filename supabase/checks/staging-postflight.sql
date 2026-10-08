@@ -66,6 +66,27 @@ begin
     and tgfoid = 'private.create_auth_profile()'::regprocedure) then
     raise exception 'Auth profile trigger missing/disabled';
   end if;
+  -- Compatible con versión 004; si 005 está instalada, verificar toda su superficie privilegiada.
+  if exists(select 1 from pg_attribute where attrelid='public.organization_memberships'::regclass
+    and attname='is_active' and not attisdropped) then
+    foreach object_name in array array['public.manage_organization_members(uuid)',
+      'public.change_organization_member(uuid,uuid,text,boolean)',
+      'public.add_organization_member(uuid,text,text)'] loop
+      if not exists(select 1 from pg_proc p where p.oid=to_regprocedure(object_name)
+        and p.prosecdef and p.proowner=(select oid from pg_roles where rolname='postgres')
+        and 'search_path=""'=any(p.proconfig))
+        or has_function_privilege('anon',object_name,'EXECUTE')
+        or has_function_privilege('service_role',object_name,'EXECUTE')
+        or not has_function_privilege('authenticated',object_name,'EXECUTE') then
+        raise exception 'Unsafe user-management RPC: %',object_name;
+      end if;
+    end loop;
+    if not exists(select 1 from pg_class where oid=to_regclass('private.membership_audit') and relrowsecurity and relforcerowsecurity)
+      or has_table_privilege('authenticated','private.membership_audit','SELECT,INSERT,UPDATE,DELETE')
+      or has_table_privilege('service_role','private.membership_audit','SELECT,INSERT,UPDATE,DELETE') then
+      raise exception 'User-management audit exposed';
+    end if;
+  end if;
   raise notice 'Staging SQL postflight passed; HTTP Auth and tenant/role acceptance remain required';
 end $$;
 rollback;

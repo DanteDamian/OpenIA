@@ -77,3 +77,7 @@ Las políticas INSERT usan WITH CHECK; UPDATE valida tanto la fila anterior como
 Esta base no es un libro contable ni un sistema de facturación electrónica. Faltan partidas de documentos, comprobantes, conciliación, historial inmutable, estados de liquidación calculados, aprobación de gastos y reglas de transición. Los pagos pueden representar anticipos/excedentes: no se impone que la suma sea menor al total ni se cambia automáticamente el estado de una factura. Una factura que informa proyecto y contrato valida empresa/cliente para ambos, pero la relación específica proyecto/contrato debe validarse en la futura capa de negocio.
 
 No se calculan impuestos ni se validan normas tributarias en estas migraciones. OpenAI y Alegra siguen desconectados.
+
+## Administración de usuarios (migración 005 preparada)
+
+La nueva columna `organization_memberships.is_active` controla el acceso organizacional y `private.membership_audit` registra altas/cambios sin exponer la auditoría a clientes. Tres RPC administrativas validan identidad, rol, organización y protección del último administrador. Esta migración está preparada y probada localmente; no forma parte todavía del esquema remoto. Procedimiento y límites: [USER_MANAGEMENT.md](USER_MANAGEMENT.md).

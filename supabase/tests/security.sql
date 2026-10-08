@@ -126,6 +126,31 @@ begin
 end $$;
 reset role;
 
+-- Contrato de las RPC administrativas: propietario confiable, sin search_path implícito.
+do $$
+declare signature text;
+begin
+  foreach signature in array array['public.manage_organization_members(uuid)',
+    'public.change_organization_member(uuid,uuid,text,boolean)',
+    'public.add_organization_member(uuid,text,text)'] loop
+    if not exists (select 1 from pg_proc p where p.oid=signature::regprocedure
+      and p.prosecdef and p.proowner=(select oid from pg_roles where rolname='postgres')
+      and 'search_path=""'=any(p.proconfig))
+      or has_function_privilege('anon',signature,'EXECUTE')
+      or has_function_privilege('service_role',signature,'EXECUTE')
+      or not has_function_privilege('authenticated',signature,'EXECUTE') then
+      raise exception 'Unsafe membership RPC: %',signature;
+    end if;
+  end loop;
+  if has_table_privilege('authenticated','private.membership_audit','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('anon','private.membership_audit','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('service_role','private.membership_audit','SELECT,INSERT,UPDATE,DELETE')
+    or not exists(select 1 from pg_class where oid='private.membership_audit'::regclass and relrowsecurity and relforcerowsecurity) then
+    raise exception 'Audit exposed';
+  end if;
+  raise notice 'User-management RPC grants/ownership/search_path and private audit passed';
+end $$;
+
 set local role authenticated;
 do $$
 declare table_name text; visible integer;

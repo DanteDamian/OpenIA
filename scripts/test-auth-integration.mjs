@@ -434,13 +434,13 @@ try {
   );
   for (const role of ["manager", "accountant", "viewer"])
     sql(
-      `insert into public.organization_memberships values ('${org}','${users[role].id}','${role}',now())`,
+      `insert into public.organization_memberships(organization_id,user_id,role_id,created_at) values ('${org}','${users[role].id}','${role}',now())`,
     );
   const otherOrg = sql(
     "insert into public.organizations(name,slug) values ('Isolated local fixture','isolated-local') returning id",
   ).split("\n")[0];
   sql(
-    `insert into public.organization_memberships values ('${otherOrg}','${users.outsider.id}','admin',now())`,
+    `insert into public.organization_memberships(organization_id,user_id,role_id,created_at) values ('${otherOrg}','${users.outsider.id}','admin',now())`,
   );
   // No se insertan facturas, pagos, gastos ni importes financieros.
   const client = (
@@ -656,6 +656,38 @@ try {
     typeof refreshed.data.access_token === "string",
     "Auth refresh returned session",
   );
+  // Administración de usuarios: únicamente fixtures locales y sin correos externos.
+  const rpc = (name) => `${restURL}/rpc/${name}`;
+  const memberBody = {target_organization:org,target_user:users.viewer.id,new_role:"viewer",new_active:false};
+  const roster = await http("Admin reads organizational roster",rpc("manage_organization_members"),{token:users.admin.token,method:"POST",body:{target_organization:org}});
+  check(roster.data.length === 4 && roster.data.every(row=>row.user_id!==users.outsider.id),"Roster excludes other organization");
+  for (const role of ["manager","accountant","viewer","outsider"])
+    await http(`${role} cannot read administrative roster`,rpc("manage_organization_members"),{token:users[role].token,method:"POST",body:{target_organization:org}},403);
+  await http("Admin cannot read another organization",rpc("manage_organization_members"),{token:users.admin.token,method:"POST",body:{target_organization:otherOrg}},403);
+  await http("Viewer cannot escalate membership",rpc("change_organization_member"),{token:users.viewer.token,method:"POST",body:{...memberBody,new_role:"admin",new_active:true}},403);
+  await http("Last admin cannot be suspended",rpc("change_organization_member"),{token:users.admin.token,method:"POST",body:{...memberBody,target_user:users.admin.id,new_role:"admin"}},400);
+  await http("Admin cannot change foreign membership",rpc("change_organization_member"),{token:users.admin.token,method:"POST",body:{...memberBody,target_user:users.outsider.id}},400);
+  await http("Admin suspends viewer",rpc("change_organization_member"),{token:users.admin.token,method:"POST",body:memberBody},204);
+  check((await http("Suspended JWT cannot read clients",`${restURL}/clients`,{token:users.viewer.token})).data.length===0,"Existing token loses organization access");
+  await http("Suspended member cannot run privileged RPC",rpc("manage_organization_members"),{token:users.viewer.token,method:"POST",body:{target_organization:org}},403);
+  await http("Admin restores viewer",rpc("change_organization_member"),{token:users.admin.token,method:"POST",body:{...memberBody,new_active:true}},204);
+  await http("Unconfirmed account cannot be linked",rpc("add_organization_member"),{token:users.admin.token,method:"POST",body:{target_organization:org,target_email:unconfirmed.data.email,new_role:"viewer"}},400);
+  await http("Auth bans isolated local fixture",`${authURL}/admin/users/${users.outsider.id}`,{token:service,method:"PUT",body:{ban_duration:"1h"}});
+  await http("Banned account cannot be linked",rpc("add_organization_member"),{token:users.admin.token,method:"POST",body:{target_organization:org,target_email:users.outsider.email,new_role:"viewer"}},400);
+  await http("Auth unbans isolated local fixture",`${authURL}/admin/users/${users.outsider.id}`,{token:service,method:"PUT",body:{ban_duration:"none"}});
+  await http("Admin links existing confirmed account",rpc("add_organization_member"),{token:users.admin.token,method:"POST",body:{target_organization:org,target_email:users.outsider.email,new_role:"viewer"}},204);
+  await http("Duplicate membership rejected",rpc("add_organization_member"),{token:users.admin.token,method:"POST",body:{target_organization:org,target_email:users.outsider.email,new_role:"viewer"}},409);
+  await http("Unknown account cannot be linked",rpc("add_organization_member"),{token:users.admin.token,method:"POST",body:{target_organization:org,target_email:"missing@example.invalid",new_role:"admin"}},400);
+  check(sql(`select count(*) from private.membership_audit where organization_id='${org}'`)==="3","Membership changes audited without duplicate failure records");
+  sql(`delete from public.organization_memberships where organization_id='${org}' and user_id='${users.outsider.id}'`);
+
+  await http("Admin promotes second local administrator",rpc("change_organization_member"),{token:users.admin.token,method:"POST",body:{...memberBody,new_role:"admin",new_active:true}},204);
+  const race = await Promise.all(["admin","viewer"].map(role=>fetch(rpc("change_organization_member"),{method:"POST",headers:{Authorization:`Bearer ${users[role].token}`,"Content-Type":"application/json"},body:JSON.stringify({target_organization:org,target_user:users[role].id,new_role:"manager",new_active:true})})));
+  check(race.map(result=>result.status).sort().join(",")==="204,400","Concurrent self-demotions cannot remove last admin");
+  check(sql(`select count(*) from public.organization_memberships where organization_id='${org}' and role_id='admin' and is_active`)==="1","One administrator remains after race");
+  // Restauración exclusiva de los fixtures del contenedor, no existe conexión remota.
+  sql(`update public.organization_memberships set role_id='admin' where organization_id='${org}' and user_id='${users.admin.id}'`);
+  sql(`update public.organization_memberships set role_id='viewer' where organization_id='${org}' and user_id='${users.viewer.id}'`);
   // Next.js usa exclusivamente la clave pública local, nunca service_role.
   const portServer = createServer();
   portServer.listen(0, "127.0.0.1");
@@ -711,6 +743,16 @@ try {
     .getSetCookie()
     .map((item) => item.split(";")[0])
     .join("; ");
+  await http("Next administrators can open user management",`${appURL}/usuarios`,{headers:{Cookie:cookie}});
+  await http("User management rejects CSRF",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:cookie,Origin:"https://external.invalid"},body:{user_id:users.viewer.id,role_id:"admin",is_active:"true"}},403);
+  await http("User management rejects forged organization",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:cookie,Origin:appURL},body:{user_id:users.viewer.id,role_id:"viewer",is_active:"true",organization_id:otherOrg}},400);
+  await http("Next protects last administrator",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:cookie,Origin:appURL},body:{user_id:users.admin.id,role_id:"viewer",is_active:"true"}},400);
+  const managementViewerLogin = await http("Viewer logs in for user management denial",`${appURL}/api/auth/login`,{method:"POST",headers:{Origin:appURL},body:{email:users.viewer.email,password}});
+  const managementViewerCookie = managementViewerLogin.response.headers.getSetCookie().map(item=>item.split(";")[0]).join("; ");
+  await http("Next viewer cannot change users",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:managementViewerCookie,Origin:appURL},body:{user_id:users.viewer.id,role_id:"admin",is_active:"true"}},403);
+  await http("Next suspends member",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:cookie,Origin:appURL},body:{user_id:users.viewer.id,role_id:"viewer",is_active:"false"}});
+  await http("Suspended SSR session cannot mutate users",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:managementViewerCookie,Origin:appURL},body:{user_id:users.viewer.id,role_id:"admin",is_active:"true"}},401);
+  await http("Next restores member",`${appURL}/api/users`,{method:"PATCH",headers:{Cookie:cookie,Origin:appURL},body:{user_id:users.viewer.id,role_id:"viewer",is_active:"true"}});
   check(cookie.includes("sb-"), "Next login set SSR cookie");
   check(
     login.response.headers

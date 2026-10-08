@@ -4,10 +4,10 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { modules } from "@/lib/modules";
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, role }: { children: React.ReactNode; role?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const navigation = [{ slug: "", name: "Resumen", icon: "▦" }, ...modules];
+  const navigation = [{ slug: "", name: "Resumen", icon: "▦" }, ...modules, ...(role === "admin" ? [{slug:"usuarios",name:"Usuarios",icon:"♙"}] : [])];
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
       <aside className="border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:h-screen">
