@@ -1,125 +1,24 @@
 "use client";
-
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-
-export function NewClientForm() {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const submitting = useRef(false);
-  const trigger = useRef<HTMLButtonElement>(null);
-
-  function close() {
-    setOpen(false);
-    setError("");
-    trigger.current?.focus();
-  }
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (submitting.current) return;
-    const form = event.currentTarget;
-    const values = new FormData(form);
-    const legalName = String(values.get("legal_name") || "").trim();
-    const email = String(values.get("email") || "").trim();
-    setError("");
-    if (!legalName) {
-      setError("Introduce el nombre o razón social del cliente.");
-      return;
-    }
-    submitting.current = true;
-    setBusy(true);
-    try {
-      const response = await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ legal_name: legalName, email: email || null }),
-      });
-      if (!response.ok) {
-        setError(
-          response.status === 401
-            ? "Tu sesión ha vencido. Vuelve a iniciar sesión."
-            : response.status === 403
-              ? "No tienes autorización para registrar clientes desde esta sesión."
-              : "No fue posible registrar el cliente. Revisa los datos e intenta nuevamente.",
-        );
-        return;
-      }
-      form.reset();
-      close();
-      setSuccess(true);
-      router.refresh();
-    } catch {
-      setError("No pudimos confirmar el registro. Revisa la lista antes de reintentar para evitar duplicados.");
-    } finally {
-      submitting.current = false;
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="mt-6">
-      <button
-        ref={trigger}
-        type="button"
-        className="button-primary disabled:opacity-60"
-        aria-expanded={open}
-        aria-controls="new-client-form"
-        aria-disabled={busy}
-        onClick={() => {
-          if (busy) return;
-          if (open) close();
-          else {
-            setSuccess(false);
-            setOpen(true);
-          }
-        }}
-      >
-        {open ? "Cerrar formulario" : "+ Nuevo cliente"}
-      </button>
-      {success && (
-        <p role="status" className="mt-4 text-sm text-teal-800">
-          Cliente registrado correctamente.
-        </p>
-      )}
-      {open && (
-        <form
-          id="new-client-form"
-          method="post"
-          action="/api/clients"
-          onSubmit={submit}
-          aria-labelledby="new-client-title"
-          aria-busy={busy}
-          className="card mt-4 space-y-5 p-6"
-        >
-          <h2 id="new-client-title" className="text-lg font-semibold">Nuevo cliente</h2>
-          <p className="text-sm text-slate-500">Registra los datos reales del cliente. Se guardará como activo en tu empresa.</p>
-          <fieldset disabled={busy} className="grid gap-5 sm:grid-cols-2">
-            <legend className="sr-only">Datos del cliente</legend>
-            <div>
-              <label htmlFor="client-name" className="text-sm font-medium">Nombre o razón social <span aria-hidden="true">*</span></label>
-              <input id="client-name" name="legal_name" type="text" autoComplete="organization" required maxLength={200}
-                autoFocus className="mt-2 block w-full rounded-lg border border-slate-300 bg-white p-3" />
-            </div>
-            <div>
-              <label htmlFor="client-email" className="text-sm font-medium">Correo electrónico (opcional)</label>
-              <input id="client-email" name="email" type="email" autoComplete="email" maxLength={254}
-                className="mt-2 block w-full rounded-lg border border-slate-300 bg-white p-3" />
-            </div>
-          </fieldset>
-          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          <div className="flex flex-wrap gap-3">
-            <button type="submit" disabled={busy} className="button-primary disabled:opacity-60">
-              {busy ? "Guardando…" : "Guardar cliente"}
-            </button>
-            <button type="button" disabled={busy} onClick={close}
-              className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium disabled:opacity-60">Cancelar</button>
-          </div>
-        </form>
-      )}
-    </div>
-  );
+import { clientInput } from "@/lib/auth/validation";
+import type { ClientRecord } from "@/lib/clients/model";
+import { RecordForm, type Field } from "./record-form";
+export function NewClientForm({ client }: { client?: ClientRecord }) {
+  const fields: Field[] = [
+    { name: "legal_name", label: "Nombre o razón social", required: true, max: 200, autoComplete: "organization" },
+    { name: "email", label: "Correo electrónico (opcional)", type: "email", max: 254, autoComplete: "email" },
+    { name: "document_type", label: "Tipo de identificación (opcional)", max: 20, options: [
+      { value: "", label: "Sin identificación" }, { value: "NIT", label: "NIT" }, { value: "CC", label: "Cédula de ciudadanía" },
+      { value: "CE", label: "Cédula de extranjería" }, { value: "PASSPORT", label: "Pasaporte" }, { value: "OTHER", label: "Otro" },
+    ] },
+    { name: "document_number", label: "Número de identificación (opcional)", max: 40 },
+    { name: "phone", label: "Teléfono (opcional)", type: "tel", max: 40, autoComplete: "tel" },
+    { name: "status", label: "Estado", required: true, max: 20, options: [{ value: "active", label: "Activo" }, { value: "inactive", label: "Inactivo" }] },
+    { name: "address", label: "Dirección (opcional)", type: "textarea", max: 1000 },
+  ].map(field => ({ ...field, initial: client?.[field.name as keyof ClientRecord] ?? (field.name === "status" ? "active" : null) } as Field));
+  return <RecordForm key={client ? client.id : "new"}
+    title={client ? "Editar cliente" : "Nuevo cliente"} triggerLabel={client ? "Editar cliente" : "+ Nuevo cliente"}
+    endpoint={client ? `/api/clients?id=${encodeURIComponent(client.id)}` : "/api/clients"} method={client ? "PATCH" : "POST"}
+    fields={fields} validate={input => clientInput(input) !== null}
+    successMessage={client ? "Cliente actualizado correctamente." : "Cliente registrado correctamente."}
+    help="Usa información real. La identificación es opcional, pero requiere tipo y número juntos. Inactivar conserva el historial del cliente." />;
 }

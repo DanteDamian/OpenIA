@@ -1,3 +1,5 @@
+import { queryClients } from "@/lib/clients/query";
+import { listOptions, pageSize } from "@/lib/clients/model";
 import { getAccess } from "@/lib/auth/session";
 import {
   clientInput,
@@ -12,17 +14,13 @@ function accessError(status: string) {
     status === "unauthenticated" ? 401 : status === "forbidden" ? 403 : 503,
   );
 }
-export async function GET() {
+export async function GET(request: Request) {
   const access = await getAccess();
   if (access.status !== "authorized") return accessError(access.status);
-  const { data, error } = await access.supabase
-    .from("clients")
-    .select("id,legal_name,email,status")
-    .eq("organization_id", access.organizationId)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const options = listOptions(Object.fromEntries(new URL(request.url).searchParams));
+  const { data, error, count } = await queryClients(access.supabase, access.organizationId, options);
   if (error) return json({ error: "No fue posible consultar clientes." }, 503);
-  return json({ clients: data });
+  return json({ clients: data, total: count, page: options.page, pageSize });
 }
 export async function POST(request: Request) {
   if (!sameOrigin(request))
@@ -51,7 +49,7 @@ export async function PATCH(request: Request) {
     return json({ error: "No tienes permisos de edición." }, 403);
   const id = new URL(request.url).searchParams.get("id");
   if (!validUuid(id)) return json({ error: "Identificador inválido." }, 400);
-  const input = clientInput(await boundedJson(request));
+  const input = clientInput(await boundedJson(request), true);
   if (!input) return json({ error: "Datos de cliente inválidos." }, 400);
   const { data, error } = await access.supabase
     .from("clients")

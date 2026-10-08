@@ -1,20 +1,47 @@
-# Registro inicial de clientes
+# Módulo Clientes
 
-En `/clientes`, los roles `admin` y `manager` pueden abrir **Nuevo cliente**. El formulario solicita nombre o razón social (obligatorio, hasta 200 caracteres) y correo electrónico (opcional, hasta 254). No incluye datos precargados. El cliente queda activo por el valor predeterminado del modelo existente.
+## Funcionalidades
 
-El formulario envía JSON por POST a `/api/clients`, muestra el estado de guardado, evita envíos simultáneos y conserva los campos ante un rechazo. Después de confirmar el alta, cierra el formulario, anuncia el resultado y refresca la lista del servidor. Una interrupción de red puede ocurrir después de guardar: el mensaje pide comprobar la lista antes de repetir, porque no se garantiza deduplicación entre solicitudes distintas. Cancelar descarta los campos sin enviarlos.
+- Alta con nombre o razón social obligatorio; correo, tipo/número de identificación, teléfono y dirección opcionales.
+- Listado con identificación, correo, estado y enlace Ver ficha. Búsqueda literal por nombre/razón social, filtro por estado y paginación de 25 registros.
+- Ficha `/clientes/[id]` con todos los datos y edición para admin/manager. Estado activo/inactivo editable; inactivar conserva el cliente y sus relaciones.
+- Contactos vinculados al cliente: alta y edición de nombre obligatorio, cargo, correo y teléfono opcionales. Lectura paginada de 25 contactos por página.
+- Formularios responsive, etiquetas accesibles, foco al abrir/cerrar, confirmaciones de guardado, bloqueo de envíos simultáneos y conservación de datos ante rechazo.
 
-El servidor existente verifica Origin contra la configuración confiable del deployment, identidad y membresía, exige rol admin/manager y valida una lista cerrada de campos. `organization_id` procede de la membresía verificada, nunca del formulario. Supabase opera con la sesión de la persona y conserva RLS. Los roles viewer/accountant no reciben el formulario y el endpoint rechaza sus escrituras. Los errores de base de datos no se muestran al navegador.
+No se añaden borrados: los registros existentes se conservan. No hay datos precargados ni información financiera ficticia.
 
-## Validación de esta entrega
+## Permisos y validación
 
-- 75 pruebas unitarias en 10 archivos aprobadas, incluyendo 15 comprobaciones nuevas de formulario, permisos, CSRF, mass assignment, errores y envíos simultáneos. Los proveedores de estas pruebas son simulados; no insertan datos en Supabase.
-- Lint, typecheck y build aprobados. El build usa la URL pública Supabase como override de proceso local, sin cambiar secretos.
-- No se modifican migraciones, RLS, usuarios, membresías, secretos ni configuraciones remotas. No se ejecuta bootstrap ni se crean clientes reales durante el desarrollo.
-- No se repiten test:db/test:integration: esta entrega añade interfaz sobre un endpoint existente sin modificar Auth ni RLS. El commit omite CI con [skip ci] para evitar jobs de fixtures/migraciones automáticas bajo las restricciones vigentes. No se modifica el workflow.
+Server Components verifican identidad y membresía antes de consultar. Viewer/accountant pueden leer dentro del alcance de RLS, sin formularios de edición. Admin/manager pueden crear y editar; cada POST/PATCH vuelve a verificar sesión, rol y Origin contra el origen confiable del servidor. No basta ocultar botones.
+
+Las APIs solo admiten campos editables conocidos. Organización, IDs de relación y autores no son datos del formulario. El cliente padre del contacto se verifica en la organización de la sesión antes de guardar; la edición además filtra por contact_id, client_id y organization_id. Cliente/contacto ajeno o inexistente devuelve 404 sin divulgar información. Supabase utiliza la sesión de la persona y conserva las claves compuestas y políticas RLS ya instaladas. Los triggers existentes conservan autores/fechas de creación y sellan la actualización. No se utiliza service_role.
+
+Límites: nombre 200 caracteres; correo 254; teléfono/documento 40; dirección 1000; cargo 200; JSON 8 KiB. Identificación exige tipo y número juntos (NIT, CC, CE, PASSPORT u OTHER). No se valida existencia del documento ante entidades externas. Nombre siempre obligatorio, también al editar. Campos opcionales omitidos en PATCH se conservan; null/vacío los limpia. Para cambiar o quitar identificación enviar ambos campos.
+
+La búsqueda limita texto a 100 caracteres, escapa comodines de ILIKE y filtra explícitamente por organización. Orden por fecha e ID, conteo exacto y rango limitado. Los enlaces de paginación conservan filtros; la búsqueda vuelve a la primera página. Si una página queda fuera de rango, ofrece volver.
+
+Los errores del proveedor no se envían al navegador ni se registran datos personales. Un fallo de red puede ocurrir después de guardar: el mensaje pide revisar la lista antes de reintentar. No hay garantía de deduplicación entre solicitudes distintas ni bloqueo de edición simultánea por dos personas. No se envían correos al guardar clientes/contactos.
+
+## Endpoints
+
+| Método y ruta | Comportamiento |
+| --- | --- |
+| GET /api/clients?q=…&status=active&page=1 | Lista paginada y total dentro de la empresa autorizada |
+| POST /api/clients | Crea un cliente en la empresa de la sesión |
+| PATCH /api/clients?id=UUID | Edita la ficha/estado dentro de la empresa |
+| POST /api/clients/UUID/contacts | Crea un contacto del cliente autorizado |
+| PATCH /api/clients/UUID/contacts?id=UUID | Edita un contacto de ese cliente y empresa |
+
+Las APIs de escritura requieren JSON y Origin exacto; sesión ausente 401, permisos/origen inválidos 403, validación 400, registro no visible 404 y consulta no disponible 503. Las páginas y listados muestran estados vacíos o errores separados.
+
+## Validación
+
+Lint, typecheck y build aprobados; 113 pruebas unitarias en 13 archivos aprobadas (antes: 75 en 10). El build utiliza un override local de URL pública Supabase, sin cambiar secretos. Las pruebas con proveedores simulados verifican altas, edición, campos omitidos, identificación incompleta, mass assignment, roles, CSRF, aislamiento por empresa/cliente, paginación, fallos del proveedor y formularios. Resultados finales en el PR #2. No se insertan datos en Supabase durante estas comprobaciones.
+
+No se modifican migraciones, RLS, usuarios, membresías, secretos ni configuración remota. No se ejecuta bootstrap, no se crean datos reales durante el desarrollo y no se hace merge ni despliegue a Production. El commit lleva [skip ci] para evitar jobs de migraciones/fixtures bajo las restricciones vigentes; test:db/test:integration no se repiten y sus resultados previos son históricos. No se cambia el workflow.
 
 ## Prueba en Preview
 
-Abrir el Preview de esta rama que contenga el nuevo commit, usando su URL específica. Iniciar sesión como administrador autorizado, abrir Clientes → Nuevo cliente y registrar únicamente un cliente real cuando corresponda. Guardar debe mostrar confirmación y el cliente en la lista; recargar la página confirma persistencia. No se declara realizada esta prueba remota ni se incorpora información personal a evidencias.
+Abrir el deployment Preview de feature/supabase-data-model que incluya esta entrega, con su URL específica. Desde Clientes → Ver ficha del cliente real existente, editar teléfono/dirección/identificación únicamente cuando corresponda y recargar para confirmar persistencia. Añadir un contacto real, editarlo y recargar. Probar búsqueda y filtro de estado; inactivar solo si corresponde. No se declara ejecutada esa prueba remota ni se incluyen datos personales en evidencias.
 
-Esta versión incluye alta, listado y correo opcional. Edición visual, identificación tributaria, contactos y paginación quedan para tareas siguientes; la lista actual muestra hasta 100 registros recientes.
+Las métricas financieras, proyectos, cotizaciones, contratos y facturación pertenecen a módulos posteriores; OpenAI y Alegra siguen fuera del alcance.

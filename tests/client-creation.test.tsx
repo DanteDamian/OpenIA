@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 const mocks = vi.hoisted(() => ({
   access: vi.fn(), from: vi.fn(), insert: vi.fn(), select: vi.fn(), single: vi.fn(),
-  eq: vi.fn(), order: vi.fn(), limit: vi.fn(),
+  eq: vi.fn(), order: vi.fn(), range: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({ getAccess: mocks.access, requireAccess: mocks.access }));
 vi.mock("@/features/clients/new-client-form", () => ({ NewClientForm: () => <button>Nuevo cliente</button> }));
@@ -19,10 +19,10 @@ beforeEach(() => {
   vi.stubEnv("VERCEL_ENV", "preview");
   vi.stubEnv("VERCEL_URL", "current.vercel.app");
   const query = { insert: mocks.insert, select: mocks.select, single: mocks.single,
-    eq: mocks.eq, order: mocks.order, limit: mocks.limit };
+    eq: mocks.eq, order: mocks.order, range: mocks.range };
   for (const method of [mocks.from, mocks.insert, mocks.select, mocks.eq, mocks.order]) method.mockReturnValue(query);
   mocks.single.mockResolvedValue({ data: { id: "local-client" }, error: null });
-  mocks.limit.mockResolvedValue({ data: [], error: null });
+  mocks.range.mockResolvedValue({ data: [], error: null, count: 0 });
   mocks.access.mockResolvedValue({ status: "authorized", role: "admin", organizationId,
     supabase: { from: mocks.from } });
 });

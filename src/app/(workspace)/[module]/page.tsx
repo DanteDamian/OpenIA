@@ -8,12 +8,14 @@ export function generateStaticParams() {
 }
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ module: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const selectedModule = getModule((await params).module);
   if (!selectedModule) notFound();
   await requireAccess();
-  if (selectedModule.slug === "clientes") return <ClientList />;
+  if (selectedModule.slug === "clientes") return <ClientList params={await searchParams} />;
   return <ModulePage module={selectedModule} />;
 }
