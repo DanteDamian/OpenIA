@@ -2,7 +2,9 @@
 
 ## Estado de esta entrega
 
-Las migraciones se ejecutaron únicamente en bases PostgreSQL efímeras locales. Las pruebas SQL usan un contenedor sin red; la integración Auth/PostgREST usa una red privada sin NAT de salida y puertos HTTP solo en loopback, sin publicar PostgreSQL ni conservar volúmenes. No se vinculó un proyecto remoto, no se utilizaron credenciales reales y no se ejecutaron migraciones en producción.
+Las tres migraciones ya se aplicaron, con autorización expresa, al proyecto definitivo `wafzklaioidpqqmbglff` mediante la API de administración. El [informe de aplicación](SUPABASE_DEPLOYMENT_REPORT.md) registra el estado previo, historial, hashes y verificaciones remotas. La revisión adicional de Auth se detuvo por falta de `auth_config_read`. No se creó un staging independiente ni se hizo merge.
+
+Las pruebas locales originales siguen siendo independientes: SQL en contenedor sin red e integración Auth/PostgREST en red privada sin NAT de salida y HTTP solo loopback. No reutilizar estos runners ni su emulación contra el proyecto remoto.
 
 Las versiones son:
 
@@ -42,7 +44,7 @@ No se ejecutó este procedimiento con el stack completo en esta entrega: la vali
 
 ## Staging: revisión y aplicación por un operador
 
-Para la primera instalación, seguir el procedimiento detallado y los controles de solo lectura de [STAGING_RUNBOOK.md](STAGING_RUNBOOK.md). El proyecto staging todavía no existe; su creación y las acciones remotas no se ejecutaron. El nuevo runner local también verifica las migraciones con un operador PostgreSQL 17 sin privilegios de superusuario.
+Para la primera instalación, seguir el procedimiento detallado y los controles de solo lectura de [STAGING_RUNBOOK.md](STAGING_RUNBOOK.md). No se creó un staging independiente; la instalación autorizada del proyecto definitivo ya consta en SUPABASE_DEPLOYMENT_REPORT.md. El nuevo runner local también verifica las migraciones con un operador PostgreSQL 17 sin privilegios de superusuario.
 
 Estos pasos son documentación, no una autorización de producción:
 
@@ -60,4 +62,4 @@ La empresa inicial y membresías se aprovisionan con acceso administrativo audit
 
 No hay rollback automático ni scripts DROP sobre bases de negocio. Si una transacción falla, PostgreSQL revierte esa migración; revisar la causa y el historial antes de reintentar. Tras una aplicación exitosa, corregir mediante una migración nueva. Para recuperación de datos se requiere backup probado y procedimiento del proyecto.
 
-Producción queda fuera de esta entrega. Requiere revisión del PR, validación completa en staging y aprobación explícita independiente. No hacer merge ni desplegar automáticamente.
+La instalación inicial de la base definitiva se realizó con autorización del usuario. El merge y el despliegue del frontend siguen fuera de esta entrega; requieren revisión y autorización independientes. No hacer merge ni desplegar automáticamente.

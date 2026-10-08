@@ -20,7 +20,7 @@ Configurar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e
 
 `src/lib/supabase/server.ts` maneja sesiones en servidor con cookies HttpOnly; `src/proxy.ts` verifica y renueva sesiones. Nunca se usa getSession como prueba de identidad. La aplicación no tiene un cliente Supabase autenticado en navegador ni usa service_role. Para desarrollo local se admite HTTP solo en loopback; los destinos remotos requieren HTTPS.
 
-El esquema, RLS por empresa, autenticación, renovación de sesión y autorización se verificaron localmente. Antes de cargar datos reales, validar su configuración y permisos en un staging autorizado. Las migraciones y el flujo de autenticación están implementados pero no se aplicaron a un proyecto remoto.
+El esquema, RLS por empresa, autenticación, renovación de sesión y autorización se verificaron localmente. Las tres migraciones ya se aplicaron con autorización a `wafzklaioidpqqmbglff` y se verificó el modelo en PostgreSQL 17.11 gestionado. No se crearon usuarios ni datos de negocio. Ver [resultados y pendientes](docs/SUPABASE_DEPLOYMENT_REPORT.md): el token carece de `auth_config_read` y la aceptación con sesiones reales sigue pendiente antes de cargar información empresarial.
 
 OpenAI y Alegra no están conectados y no requieren claves en esta etapa.
 
@@ -55,7 +55,7 @@ En Vercel importar el repositorio con preset Next.js, Node.js 24, instalación `
 
 Migraciones versionadas en `supabase/migrations/`, sin aplicación remota automática. El modelo usa Supabase Auth y RLS por empresa. Ver [modelo de datos](docs/DATA_MODEL.md) y [procedimiento de despliegue](docs/DATABASE_DEPLOYMENT.md).
 
-La primera instalación y aceptación en Supabase gestionado están preparadas en [STAGING_RUNBOOK.md](docs/STAGING_RUNBOOK.md), con controles SQL de solo lectura antes y después de aplicar las tres versiones. La compatibilidad local con PostgreSQL 17 incluye un operador sin privilegios de superusuario; la validación del proyecto remoto sigue pendiente de acceso seguro y ejecución.
+La primera instalación y aceptación en Supabase gestionado se documentan en [STAGING_RUNBOOK.md](docs/STAGING_RUNBOOK.md), con controles SQL de solo lectura antes y después de aplicar las tres versiones. El [informe de aplicación remota](docs/SUPABASE_DEPLOYMENT_REPORT.md) registra versiones, hashes, 13 tablas, 45 FK, 60 índices válidos y 37 políticas RLS. No volver a aplicar las versiones registradas.
 
 ```sh
 npm run test:db

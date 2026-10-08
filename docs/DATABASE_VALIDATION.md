@@ -1,5 +1,7 @@
 # Verificación del modelo y acceso autenticado — PR #2
 
+Las comprobaciones siguientes documentan el montaje local. Las tres versiones ya se aplicaron al proyecto real autorizado; los resultados remotos y el bloqueo específico `auth_config_read` constan en [SUPABASE_DEPLOYMENT_REPORT.md](SUPABASE_DEPLOYMENT_REPORT.md).
+
 | Comprobación | Resultado ejecutado localmente |
 | --- | --- |
 | `npm run test:db` | Tres migraciones aplicadas en PostgreSQL 17 efímero; integridad, grants, RLS y matriz de 176 combinaciones aprobadas |
@@ -29,4 +31,4 @@ Las tres migraciones se aplicaron en orden con un operador no superusuario, prop
 
 Se verificó el checksum oficial del binario Supabase CLI 2.75.0 y sus flags `link`, `db push --linked --dry-run` mediante ayuda local. No se inició sesión, vinculó ni aplicó SQL a un proyecto remoto.
 
-No se aplicaron migraciones remotas, no se usaron credenciales reales, no se modificó producción y no se hizo merge.
+En la validación local original no se usaron credenciales reales ni se hicieron operaciones remotas. La aplicación posterior autorizada se documenta por separado; no se hizo merge.
