@@ -1,3 +1,4 @@
+import { startLocalSMTP } from "./local-smtp.mjs";
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomBytes, createHmac, randomUUID } from "node:crypto";
@@ -61,6 +62,7 @@ function jwt(role, claims = {}) {
 }
 const anon = jwt("anon"),
   service = jwt("service_role");
+let smtp;
 let gateway,
   next,
   nextLogs = "";
@@ -89,6 +91,8 @@ function start(name, image, env, port) {
     run,
     "--network-alias",
     name,
+    "--add-host",
+    "host.docker.internal:host-gateway",
     "--env-file",
     envFile(name, env),
   ];
@@ -223,6 +227,7 @@ try {
     grant create on database postgres to supabase_auth_admin;
     grant usage on schema public,auth to anon,authenticated,service_role;
     alter default privileges for role postgres in schema public grant all on tables to anon,authenticated,service_role;`);
+  smtp=await startLocalSMTP();
   const authPort = start(
     "auth",
     images.auth,
@@ -235,6 +240,13 @@ try {
       GOTRUE_DB_NAMESPACE: "auth",
       GOTRUE_SITE_URL: "http://127.0.0.1:3000",
       GOTRUE_DISABLE_SIGNUP: "true",
+      GOTRUE_URI_ALLOW_LIST: "http://127.0.0.1:*/**",
+      GOTRUE_SMTP_HOST: "host.docker.internal",
+      GOTRUE_SMTP_PORT: String(smtp.port),
+      GOTRUE_SMTP_ADMIN_EMAIL: "noreply@example.invalid",
+      GOTRUE_SMTP_SENDER_NAME: "Local fixtures",
+      GOTRUE_SMTP_MAX_FREQUENCY: "1s",
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: "100",
       GOTRUE_JWT_SECRET: secret,
       GOTRUE_JWT_ADMIN_ROLES: "service_role",
       GOTRUE_JWT_AUD: "authenticated",
@@ -712,6 +724,8 @@ try {
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon,
         AUTH_SITE_URL: appURL,
         AUTH_RECOVERY_SECRET: secret.slice(0, 64),
+        SUPABASE_SECRET_KEY: service,
+        SUPABASE_SERVICE_ROLE_KEY: "",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -883,6 +897,61 @@ try {
     },
     401,
   );
+  {
+  // Alta completamente desde Next.js: Auth Admin -> SMTP local -> confirmación -> contraseña -> membresía.
+  const inviteEmail=`invited-${randomBytes(4).toString("hex")}@example.invalid`;
+  await http("Viewer cannot invite users",`${appURL}/api/users`,{method:"POST",headers:{Origin:appURL,Cookie:viewerCookie},body:{email:inviteEmail,role_id:"admin"}},403);
+  const sent=await http("Admin invites new identity from application",`${appURL}/api/users`,{method:"POST",headers:{Origin:appURL,Cookie:cookie},body:{email:inviteEmail,role_id:"manager"}});
+  check(sent.data.success,"Application confirms sent invitation");
+  const inviteId=sql(`select id from private.organization_invitations where email='${inviteEmail}'`);
+  check(validId(inviteId),"Invitation persisted without membership");
+  check(sql(`select count(*) from public.organization_memberships m join auth.users u on u.id=m.user_id where u.email='${inviteEmail}'`)==="0","Unaccepted invitation grants no organization access");
+  await waitFor("local invitation email",()=>smtp.messages.some(message=>message.recipients.includes(inviteEmail)));
+  const message=smtp.messages.find(message=>message.recipients.includes(inviteEmail));
+  const source=message.body.replace(/=\r\n/g,"").replace(/=3D/g,"=").replace(/&amp;/g,"&");
+  const link=[...source.matchAll(/https?:[^\s"<>]+/g)].map(match=>match[0]).find(value=>value.includes("/verify?"));
+  check(!!link,"SMTP captures actual Auth confirmation link");
+  const confirmationLink=new URL(link);
+  check(confirmationLink.hostname==="127.0.0.1" && confirmationLink.pathname.endsWith("/verify"),"Captured link belongs to isolated Auth service");
+  const confirmation=await fetch(`${authURL}/verify${confirmationLink.search}`,{redirect:"manual"});
+  check(confirmation.status===302 || confirmation.status===303,"Auth validates actual invitation email link");
+  const target=new URL(confirmation.headers.get("location"));
+  check(target.origin===appURL && target.pathname===`/invitacion/${inviteId}`,"Auth redirects to exact local invitation page");
+  const params=new URLSearchParams(target.hash.slice(1));
+  const inviteTokens={invitationId:inviteId,accessToken:params.get("access_token"),refreshToken:params.get("refresh_token")};
+  secrets.push(inviteTokens.accessToken,inviteTokens.refreshToken);
+  await http("Invitation landing page is public",`${appURL}/invitacion/${inviteId}`);
+  await http("Invitation verification rejects external Origin",`${appURL}/api/auth/invitations/verify`,{method:"POST",headers:{Origin:"https://external.invalid"},body:inviteTokens},403);
+  await http("Another email cannot validate invitation",`${appURL}/api/auth/invitations/verify`,{method:"POST",headers:{Origin:appURL},body:{...inviteTokens,accessToken:users.viewer.token,refreshToken:users.viewer.refresh}},403);
+  const validated=await http("Recipient validates email-bound invitation",`${appURL}/api/auth/invitations/verify`,{method:"POST",headers:{Origin:appURL},body:inviteTokens});
+  const invitationGrant=validated.response.headers.getSetCookie().find(item=>item.startsWith("aigenterra-invitation=") && !item.includes("Max-Age=0"));
+  check(invitationGrant?.includes("HttpOnly") && invitationGrant.includes("SameSite=strict"),"Invitation grant isolated and HttpOnly");
+  const inviteCookie=invitationGrant.split(";")[0];secrets.push(inviteCookie);
+  await http("Invitation password rejects forged role",`${appURL}/api/auth/invitations/accept`,{method:"POST",headers:{Origin:appURL,Cookie:inviteCookie},body:{password,confirmation:password,role_id:"admin"}},400);
+  await http("Recipient establishes password and accepts",`${appURL}/api/auth/invitations/accept`,{method:"POST",headers:{Origin:appURL,Cookie:inviteCookie},body:{password,confirmation:password}});
+  await http("Accepted invitation grant cannot replay",`${appURL}/api/auth/invitations/accept`,{method:"POST",headers:{Origin:appURL,Cookie:inviteCookie},body:{password,confirmation:password}},401);
+  check(sql(`select m.role_id from public.organization_memberships m join auth.users u on u.id=m.user_id where u.email='${inviteEmail}' and m.organization_id='${org}'`)==="manager","Role comes exclusively from administrator invitation");
+  const invitedLogin=await http("Invited user can use normal login",`${appURL}/api/auth/login`,{method:"POST",headers:{Origin:appURL},body:{email:inviteEmail,password}});
+  const invitedCookie=invitedLogin.response.headers.getSetCookie().map(item=>item.split(";")[0]).join("; ");
+  await http("Invited user accesses dashboard",`${appURL}/`,{headers:{Cookie:invitedCookie}});
+  await http("Invited manager cannot administrate users",`${appURL}/api/users`,{method:"PATCH",headers:{Origin:appURL,Cookie:invitedCookie},body:{user_id:users.viewer.id,role_id:"admin",is_active:"true"}},403);
+  check(sql(`select count(*) from private.membership_audit a join auth.users u on u.id=a.user_id where u.email='${inviteEmail}'`)==="1","Accepted invitation audited exactly once");
+  await http("Admin invites an existing Auth identity",`${appURL}/api/users`,{method:"POST",headers:{Origin:appURL,Cookie:cookie},body:{email:users.outsider.email,role_id:"viewer"}});
+  const existingInviteId=sql(`select id from private.organization_invitations where email='${users.outsider.email}'`);
+  await http("Immediate resend is rate limited",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"POST",headers:{Origin:appURL,Cookie:cookie}},429);
+  sql(`update private.organization_invitations set updated_at=now()-interval '61 seconds' where id='${existingInviteId}'`);
+  await http("Admin can resend from app",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"POST",headers:{Origin:appURL,Cookie:cookie}});
+  await http("Admin can cancel from app",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"DELETE",headers:{Origin:appURL,Cookie:cookie}});
+  await http("Cancelled invitation cannot grant membership",rpc("accept_organization_invitation"),{token:users.outsider.token,method:"POST",body:{invitation_id:existingInviteId}},403);
+  await http("Outside admin cannot list invitations",rpc("list_organization_invitations"),{token:users.outsider.token,method:"POST",body:{target_organization:org}},403);
+  check(sql(`select status from private.organization_invitations where id='${existingInviteId}'`)==="cancelled","Cancellation persists without modifying Auth account");
+  smtp.rejectNext();
+  const failedEmail=`smtp-failed-${randomBytes(4).toString("hex")}@example.invalid`;
+  await http("SMTP failure is reported without false success",`${appURL}/api/users`,{method:"POST",headers:{Origin:appURL,Cookie:cookie},body:{email:failedEmail,role_id:"viewer"}},502);
+  check(sql(`select status from private.organization_invitations where email='${failedEmail}'`)==="failed","Failed invitation remains available for resend");
+  check(sql(`select count(*) from public.organization_memberships m join auth.users u on u.id=m.user_id where u.email='${failedEmail}'`)==="0","Failed delivery does not grant membership");
+
+  }
   const logout = await http("Next logout", `${appURL}/api/auth/logout`, {
     method: "POST",
     headers: { Origin: appURL, Cookie: cookie },
@@ -1066,6 +1135,7 @@ try {
   }
   process.exitCode = 1;
 } finally {
+  smtp?.close();
   await cleanup();
 }
 function validId(value) {

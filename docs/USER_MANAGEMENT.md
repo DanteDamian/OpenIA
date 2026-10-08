@@ -1,56 +1,53 @@
-# Gestión de usuarios: primera versión
+# Usuarios e invitaciones desde la aplicación
 
-Ruta `/usuarios`, visible solo para administradores. Permite listar miembros de la organización actual, vincular una identidad existente y confirmada por correo, cambiar entre admin/manager/accountant/viewer y suspender/reactivar acceso organizacional. No modifica identidades globales de Auth, contraseñas, usuarios de otra empresa ni registros comerciales. Una suspensión conserva las relaciones históricas, responsables y auditoría.
+`/usuarios` es exclusivo de administradores activos. **Nuevo usuario** pide correo y rol, crea la cuenta mediante Supabase Auth Admin si no existe y envía un enlace. No exige crear la identidad manualmente en Supabase. Las cuentas existentes reciben un enlace de verificación por correo. La persona valida su invitación, establece contraseña, acepta y usa `/login` para acceder al tablero.
 
-## Investigación y decisiones
+Los usuarios activos permiten cambiar roles y suspender/reactivar acceso organizacional. Invitaciones muestra estado de envío, espera, aceptación, cancelación o vencimiento, con reenvío y cancelación. Una membresía nunca se asigna por `user_metadata` ni por campos recibidos del navegador.
 
-Supabase distingue una identidad de Auth de la membresía empresarial. Una cuenta confirmada puede pertenecer a varias organizaciones con roles diferentes. El permiso se verifica en servidor con `getUser()` y nuevamente dentro de cada RPC; no procede de `user_metadata`. Se mantiene bloqueada la escritura directa de membresías mediante PostgREST.
+## Configuración única del servidor
 
-- [Administración de usuarios en servidor](https://supabase.com/docs/guides/auth/server-side/creating-a-client).
-- [Invitaciones de Supabase Auth](https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail).
-- [Funciones PostgreSQL y SECURITY DEFINER](https://supabase.com/docs/guides/database/functions).
+El registro público permanece deshabilitado. La creación por invitación requiere `SUPABASE_SECRET_KEY`, exclusivamente en servidor, con una **Secret key del mismo proyecto Supabase**, o la clave legacy service_role en `SUPABASE_SERVICE_ROLE_KEY`. Una publishable key o SUPABASE_ACCESS_TOKEN de Management no sirve para Auth Admin. El adaptador se encuentra en `src/lib/supabase/admin.ts` e importa `server-only`; no se pasa su configuración a componentes cliente.
 
-Se usan tres RPC delimitadas, SECURITY DEFINER, propietario postgres, search_path vacío y referencias cualificadas. Solo authenticated puede ejecutarlas y cada función comprueba el rol admin activo de la organización solicitada. No se concede acceso de escritura general ni se instala una clave administrativa en Next.js. El navegador nunca recibe claves secretas ni datos de organizaciones ajenas.
+En Vercel: Settings → Environment Variables → Add Environment Variable → nombre **SUPABASE_SECRET_KEY**, valor de Supabase → Project Settings → API Keys → Secret keys. Marcar Sensitive y seleccionar **Preview**, con la rama `feature/supabase-data-model`. Guardar y ejecutar Redeploy en Preview para aplicar la variable. No incluirla en NEXT_PUBLIC_ ni subirla al repositorio. No enviar su valor en chat. Este ajuste se realiza una sola vez, no por cada usuario.
 
-## Seguridad
+Se reutilizan NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY y AUTH_RECOVERY_SECRET existentes. Preview obtiene su origen HTTPS de VERCEL_URL; Production requiere AUTH_SITE_URL explícito. No se usa una URL almacenada de otro deployment ni host/forwarded del cliente.
 
-`private.has_permission` permanece SECURITY INVOKER y exige membresía activa, por lo que una suspensión deniega acceso mediante RLS incluso con un JWT previo. Next.js comprueba también esa condición en cada solicitud. Las consultas ya iniciadas pueden terminar; no se revocan globalmente las sesiones de otras organizaciones.
+La SMTP de Supabase debe funcionar y las plantillas **Invite user** y **Magic link** deben utilizar el enlace estándar `{{ .ConfirmationURL }}`. El callback es `https://<deployment-preview>/invitacion/<UUID>`. La allowlist de Redirect URLs debe incluir las URL HTTPS de este proyecto Preview y esa ruta; para los deployments del equipo Aigen4 puede usarse `https://aigenterra-finance-*-aigen4.vercel.app/**`, limitado a estos previews. No añadir `https://*.vercel.app/**`. No cambiar la plantilla de recuperación existente. Las credenciales SMTP se mantienen en Supabase, no en Next.js.
 
-Las mutaciones bloquean la fila de organización antes de autorizar/cambiar miembros. No permiten suspender o degradar al último administrador activo. Los cambios y altas se registran transaccionalmente en `private.membership_audit`; solicitudes inválidas no dejan auditoría de éxito. La tabla privada tiene RLS forzada y ningún permiso para anon/authenticated/service_role. Su lectura queda reservada al operador PostgreSQL autorizado, sin interfaz de auditoría todavía.
+## Seguridad y comportamiento ante fallos
 
-Las APIs rechazan Origin externo, cuerpos mayores de 8 KiB, campos desconocidos y organization_id aportado por el navegador. Los errores de cuentas se muestran de forma genérica. La búsqueda por email únicamente está disponible al administrador autorizado; no se expone un directorio público de identidades.
+El administrador se valida con getUser(), membresía y rol en cada API. Las RPC vuelven a autorizar al actor y la organización. POST/PATCH/DELETE exigen Origin exacto configurado en servidor. Campos cerrados, cuerpos JSON limitados a 8 KiB y UUID válidos. Reenvíos requieren 60 segundos y se limitan los intentos por administrador. Errores de correo son explícitos, sin imprimir claves, destinatarios o respuesta privada del proveedor. Si falta la conexión de Auth Admin, el formulario de alta no aparece operativo ni se escribe una invitación falsa.
 
-## Instalación y orden de despliegue
+La clave administrativa solo se usa para `auth.admin.inviteUserByEmail`. Todas las escrituras empresariales y de invitaciones emplean el cliente del actor autenticado y RPC verificadas. No se habilita signup ni se modifica el catálogo de roles. El token Management no se usa dentro de la aplicación. El adaptador Auth Admin solo importa funciones en servidor.
 
-1. Revisar `supabase/migrations/20261008000500_user_management.sql` y sus pruebas. Requiere las migraciones 001–004, PostgreSQL 17 y propietario postgres/BYPASSRLS.
-2. La migración 005 ya fue autorizada y aplicada a `wafzklaioidpqqmbglff`. No volver a ejecutarla en este proyecto. En proyectos independientes, obtener autorización antes de cualquier ejecución remota.
-3. En otro proyecto, aplicar solo la migración 005 mediante el procedimiento de migraciones revisado. No volver a ejecutar las cuatro anteriores. Añade una columna con valor inicial true, tres funciones y auditoría; no elimina datos ni asigna roles.
-4. Desplegar/revisar la rama del PR en Vercel Preview. El código mantiene el acceso anterior mientras falta la migración: la sección Usuarios muestra el bloqueo y no habilita sus formularios.
-5. Verificar `/usuarios` con administrador existente; comprobar que otros roles no reciben listados ni permisos de escritura. No probar suspensiones ni nuevas vinculaciones sobre personas reales sin autorización.
+Los enlaces estándar de Auth producen tokens en fragmento, que nunca llega al servidor HTTP. La pantalla los retira de la URL antes de enviar peticiones y requiere confirmación explícita. No se admite next/redirectTo del visitante. Tokens solo se transmiten por POST al mismo origen, se verifican con getUser y se guardan durante un máximo de diez minutos en un grant AES-256-GCM HttpOnly/Secure/SameSite=strict. Su clave se deriva para el propósito de invitación, separado de recuperación. Rutas con no-store, no-referrer, noindex y protección contra embedding. No localStorage ni cookies accesibles por JavaScript.
 
-Se mantienen las variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y las existentes para recuperación de contraseña. No hay variables nuevas ni secretos administrativos requeridos para esta versión. Preview obtiene el origen HTTPS de `VERCEL_URL`; Production mantiene AUTH_SITE_URL explícito. No se modifican configuraciones de Auth, DNS ni SMTP.
+La aceptación requiere correo confirmado coincidente con el destinatario, cuenta no bloqueada/eliminada, invitación vigente, estado sending/pending y administrador remitente todavía activo. El rol y organización salen de la invitación privada. Cancelación, vencimiento, otra identidad y replay se rechazan. Una membresía existente no se reactiva ni promueve por aceptar otro enlace. El alta y auditoría son transaccionales. El usuario empieza con su contraseña establecida e inicia sesión normalmente.
 
-## Cuentas nuevas: siguiente etapa
+Auth y PostgreSQL no comparten transacción: si SMTP falla puede existir una identidad sin membresía, que no accede a la empresa. La invitación muestra Fallo de envío y permite reintentar. Si la contraseña se guarda y la aceptación falla, la interfaz explica ese estado parcial y permite reintentar; no promete éxito. Una invitación cancelada no elimina una identidad que pueda pertenecer a otra empresa.
 
-Esta versión **no envía invitaciones ni crea identidades**. Para incorporar personas que aún no tengan cuenta, la siguiente etapa necesita invitación privada, verificación del email, configuración inicial de contraseña y aceptación controlada de membresía. `auth.admin.inviteUserByEmail` requiere una clave administrativa exclusivamente de servidor; el token Management usado por herramientas no debe introducirse en la aplicación. No se añaden formularios de registro abierto ni se reutiliza el enlace de recuperación como invitación. El correo solo deberá enviarse por instrucción explícita y con URL HTTPS permitida en Supabase.
+## Modelo y migraciones
 
-## Verificaciones
+Versiones 001–005 aplicadas anteriormente y conservadas. La 005 añadió is_active, private.membership_audit y RPC de miembros. La suspensión bloquea RLS aun con JWT previo; las mutaciones bloquean organización y protegen al último administrador, incluida concurrencia.
 
-Ejecutar `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:db`, `npm run test:integration` y `npm run build`. Los runners de base de datos/Auth utilizan contenedores PostgreSQL 17, Auth y PostgREST descartables y únicamente identidades locales efímeras autorizadas. Nunca utilizan el proyecto remoto para fixtures.
+La 006 añade `private.organization_invitations` y seis RPC delimitadas para listar, preparar, registrar envío, cancelar, validar y aceptar. Tabla con RLS forzada, sin permisos directos para anon/authenticated/service_role. Funciones SECURITY DEFINER, propietario postgres, search_path vacío, referencias cualificadas y EXECUTE limitado a authenticated. Las funciones de destinatario exigen identidad y correo verificados; las de administración exigen admin activo. La ventana de invitación es de siete días; la vigencia del enlace Auth puede ser menor y se respeta.
 
-Resultado de validación de esta entrega: 126 pruebas unitarias; comprobaciones de catálogo, integridad y permisos en PostgreSQL 17 aprobadas. 216 comprobaciones de integración validan Auth real local, PostgREST y Next.js, incluido el bloqueo con JWT/cookies previos a la suspensión y la concurrencia entre administradores. No se ejecuta bootstrap ni se asignan usuarios remotos.
+No se modifican tablas financieras ni las cuatro migraciones originales, ni se asignan miembros durante la instalación. No se ejecuta bootstrap ni se crean cuentas reales para comprobar despliegue. `supabase/checks/staging-postflight.sql` comprueba también esta superficie privilegiada.
 
-`lint`, `typecheck` y `build` aprobados. El build incluye las rutas dinámicas `/usuarios` y `/api/users`. Inspección de cambios y escaneo de patrones de secretos sin coincidencias. Tras aprobación explícita, se aplicó únicamente la migración 005 al proyecto indicado. No hubo merge ni despliegue a Production.
+## Pruebas reproducibles
 
+Ejecutar lint, typecheck, test, test:db, test:integration y build. Integración usa PostgreSQL 17, GoTrue, PostgREST, Next.js y un SMTP local que captura en memoria, sin entregar correo a internet. Auth mantiene signup deshabilitado. Fixtures efímeros de identidades autorizados y eliminados al terminar; no datos financieros.
 
-## Activación autorizada en Supabase
+Cobertura: creación desde aplicación, correo real local, confirmación Auth, contraseña, membresía y auditoría, login/tablero, roles, identidad ajena, Origin externo, campos forjados, replay, reenvío, cancelación, fallo SMTP sin falso éxito y acceso de miembros suspendidos.
 
-Migración 005 aplicada a `wafzklaioidpqqmbglff` sobre PostgreSQL 17.11, en transacción con su entrada de historial y notificación de recarga de esquema PostgREST. Las versiones 001–004 no se ejecutaron nuevamente. MD5 del SQL original registrado y del archivo local: `d3a834289c947d155a5510f4ff087500`.
+Referencias: [Auth Admin inviteUserByEmail](https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail), [funciones PostgreSQL](https://supabase.com/docs/guides/database/functions). Auth Admin invita entre navegadores diferentes y no soporta PKCE; por eso se valida el flujo implícito de la plantilla estándar y se aísla el grant en servidor.
 
-Postflight de metadatos aprobado: 16 tablas públicas con RLS forzada y 45 políticas conservadas. Tres RPC con propietario postgres, search_path vacío y ejecución restringida a authenticated; la auditoría privada tiene RLS forzada y carece de permisos para anon/authenticated/service_role. La membresía existente sigue activa, sin cambio de rol; cero cuentas suspendidas y cero registros de auditoría, porque no se invocaron altas ni cambios de miembros.
+## Resultado de esta entrega
 
-Conteos y huellas de las 16 tablas públicas y de las identidades Auth coinciden antes/después (para membresías se excluye únicamente la columna nueva). Se conservan una organización, una membresía, una identidad, un perfil y un cliente; no se crearon datos empresariales.
+134 pruebas unitarias; 248 comprobaciones Auth/PostgREST/Next.js/SMTP local; lint, typecheck, build y validación PostgreSQL 17 aprobados. El recorrido nuevo se ejecutó desde la API de Next.js hasta el correo local, aceptación, login y dashboard. Fallo SMTP comprobado: respuesta de error, ledger failed y cero membresías concedidas. No se sustituyó ese fallo por éxito genérico.
 
-En transacción de solo lectura, bajo rol authenticated y el subject del administrador existente, la RPC devuelve exactamente el miembro esperado y RLS conserva acceso al cliente. Una organización ajena, una identidad sin membresía y la lectura de auditoría privada se rechazan. No se imprimen correos, nombres ni tokens en resultados. Solicitud HTTP anónima a la RPC devuelve 401/42501: PostgREST reconoce la función y no concede acceso anónimo.
+Migración 006 aplicada al proyecto wafzklaioidpqqmbglff, preservando 001–005. SQL e historial en una transacción y recarga de PostgREST. MD5 original remoto/local coincidente: `97c61b96e917f83e64a4d1958072438f`. Postflight aprobado; 17 conteos/huellas previos coinciden, cero invitaciones reales y cero altas/cambios de membresía. En solo lectura, el administrador consulta el ledger vacío; empresas ajenas, invitaciones inexistentes y tabla privada se rechazan. HTTP anónimo devuelve 401/42501 para listado y validación. No se modificaron configuraciones de Auth/SMTP, usuarios, roles ni datos financieros.
 
-Preview confirmado success para el commit `511f624`: https://aigenterra-finance-ofsfepkn0-aigen4.vercel.app. Las verificaciones HTTP de `/login` y `/usuarios` quedan ante Vercel Authentication (302 hacia `vercel.com`); no se desactiva esa protección y no se afirma una prueba de sesión privada remota. El administrador puede abrir el Preview autorizado y acceder a **Usuarios** con su sesión Supabase.
+Bloqueo de activación: SUPABASE_SECRET_KEY no está disponible en el entorno de herramientas; el usuario indicó que la configurará en Vercel Preview, sin afirmar aún que se guardó. El token Management no sustituye esa clave; tampoco dispone de acceso a Edge Functions (403), y no se amplían sus permisos. No se solicita contratar servicios ni cambiar signup.
+
+Vercel Authentication protege actualmente el Preview: las consultas remotas sin acceso autorizado reciben 302 hacia Vercel antes de Next.js. Los destinatarios que prueben la invitación en Preview también necesitan acceso autorizado a ese deployment. No se desactiva la protección y no se afirma una prueba de correo remoto ni sesión privada. La protección de Vercel es independiente de Supabase Auth.

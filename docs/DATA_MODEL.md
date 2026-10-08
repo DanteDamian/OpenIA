@@ -81,3 +81,7 @@ No se calculan impuestos ni se validan normas tributarias en estas migraciones. 
 ## Administración de usuarios (migración 005 aplicada)
 
 La nueva columna `organization_memberships.is_active` controla el acceso organizacional y `private.membership_audit` registra altas/cambios sin exponer la auditoría a clientes. Tres RPC administrativas validan identidad, rol, organización y protección del último administrador. La migración fue probada localmente y aplicada con aprobación explícita al proyecto `wafzklaioidpqqmbglff`, conservando las cuatro versiones anteriores y las membresías existentes. Procedimiento y límites: [USER_MANAGEMENT.md](USER_MANAGEMENT.md).
+
+## Invitaciones (migración 006)
+
+`private.organization_invitations` conserva correo normalizado, rol asignado por administrador, organización, remitente, estado, ventana de aceptación e intentos de envío. No existe permiso directo para consultar/escribir el ledger desde clientes. La aceptación valida el correo confirmado de Auth y el administrador activo de origen, y crea membresía más auditoría en una transacción. Instalar el esquema no crea identidades ni envía correos. Ver [USER_MANAGEMENT.md](USER_MANAGEMENT.md).

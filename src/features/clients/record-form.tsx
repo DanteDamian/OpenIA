@@ -4,16 +4,17 @@ import { useRouter } from "next/navigation";
 export type Field = {
   name: string; label: string; required?: boolean; max: number;
   type?: "email" | "tel" | "textarea" | "date"; options?: { value: string; label: string }[];
-  initial?: string | null; autoComplete?: string;
+  initial?: string | null; autoComplete?: string; readOnly?: boolean;
 };
 type Props = {
   title: string; triggerLabel: string; endpoint: string; method: "POST" | "PATCH";
   fields: Field[]; successMessage: string; help: string;
+  showServerError?: boolean;
   validate?: (input: Record<string, string | null>) => boolean;
   validationMessage?: string;
   onFieldChange?: (name: string, value: string) => void;
 };
-export function RecordForm({ title, triggerLabel, endpoint, method, fields, successMessage, help, validate, validationMessage, onFieldChange }: Props) {
+export function RecordForm({ title, triggerLabel, endpoint, method, fields, successMessage, help, validate, validationMessage, onFieldChange, showServerError }: Props) {
   const router = useRouter();
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -40,6 +41,10 @@ export function RecordForm({ title, triggerLabel, endpoint, method, fields, succ
     try {
       const response = await fetch(endpoint, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
       if (!response.ok) {
+        if (showServerError) {
+          const result = await response.json().catch(() => null);
+          if (typeof result?.error === "string" && result.error.length <= 400) {setError(result.error); router.refresh(); return;}
+        }
         setError(response.status === 401 ? "Tu sesión ha vencido. Vuelve a iniciar sesión."
           : response.status === 403 ? "No tienes autorización para guardar desde esta sesión."
           : response.status === 404 ? "El registro ya no está disponible en tu empresa."
@@ -71,7 +76,7 @@ export function RecordForm({ title, triggerLabel, endpoint, method, fields, succ
             <label htmlFor={common.id} className="text-sm font-medium">{field.label}{field.required && <span aria-hidden="true"> *</span>}</label>
             {field.options ? <select {...common}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
               : field.type === "textarea" ? <textarea {...common} maxLength={field.max} rows={3} />
-              : <input {...common} type={field.type || "text"} maxLength={field.max} autoComplete={field.autoComplete} />}
+              : <input {...common} readOnly={field.readOnly} type={field.type || "text"} maxLength={field.max} autoComplete={field.autoComplete} />}
           </div>;
         })}
       </fieldset>

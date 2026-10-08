@@ -132,7 +132,7 @@ declare signature text;
 begin
   foreach signature in array array['public.manage_organization_members(uuid)',
     'public.change_organization_member(uuid,uuid,text,boolean)',
-    'public.add_organization_member(uuid,text,text)'] loop
+    'public.add_organization_member(uuid,text,text)', 'public.list_organization_invitations(uuid)', 'public.prepare_organization_invitation(uuid,text,text,uuid)', 'public.record_organization_invitation_delivery(uuid,uuid,boolean)', 'public.cancel_organization_invitation(uuid,uuid)', 'public.validate_organization_invitation(uuid)', 'public.accept_organization_invitation(uuid)'] loop
     if not exists (select 1 from pg_proc p where p.oid=signature::regprocedure
       and p.prosecdef and p.proowner=(select oid from pg_roles where rolname='postgres')
       and 'search_path=""'=any(p.proconfig))
@@ -147,6 +147,12 @@ begin
     or has_table_privilege('service_role','private.membership_audit','SELECT,INSERT,UPDATE,DELETE')
     or not exists(select 1 from pg_class where oid='private.membership_audit'::regclass and relrowsecurity and relforcerowsecurity) then
     raise exception 'Audit exposed';
+  end if;
+  if has_table_privilege('authenticated','private.organization_invitations','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('anon','private.organization_invitations','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('service_role','private.organization_invitations','SELECT,INSERT,UPDATE,DELETE')
+    or not exists(select 1 from pg_class where oid='private.organization_invitations'::regclass and relrowsecurity and relforcerowsecurity) then
+    raise exception 'Invitations exposed';
   end if;
   raise notice 'User-management RPC grants/ownership/search_path and private audit passed';
 end $$;

@@ -87,6 +87,17 @@ begin
       raise exception 'User-management audit exposed';
     end if;
   end if;
+  if to_regclass('private.organization_invitations') is not null then
+    foreach object_name in array array['public.list_organization_invitations(uuid)', 'public.prepare_organization_invitation(uuid,text,text,uuid)', 'public.record_organization_invitation_delivery(uuid,uuid,boolean)', 'public.cancel_organization_invitation(uuid,uuid)', 'public.validate_organization_invitation(uuid)', 'public.accept_organization_invitation(uuid)'] loop
+      if not exists(select 1 from pg_proc p where p.oid=to_regprocedure(object_name) and p.prosecdef and p.proowner=(select oid from pg_roles where rolname='postgres') and 'search_path=""'=any(p.proconfig)) or has_function_privilege('anon',object_name,'EXECUTE') or has_function_privilege('service_role',object_name,'EXECUTE') then raise exception 'Unsafe invitation RPC'; end if;
+    end loop;
+  if has_table_privilege('authenticated','private.organization_invitations','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('anon','private.organization_invitations','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('service_role','private.organization_invitations','SELECT,INSERT,UPDATE,DELETE')
+    or not exists(select 1 from pg_class where oid='private.organization_invitations'::regclass and relrowsecurity and relforcerowsecurity) then
+    raise exception 'Invitations exposed';
+  end if;
+  end if;
   raise notice 'Staging SQL postflight passed; HTTP Auth and tenant/role acceptance remain required';
 end $$;
 rollback;

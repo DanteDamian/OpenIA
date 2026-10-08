@@ -4,6 +4,8 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   if (
+    request.nextUrl.pathname.startsWith("/invitacion/") ||
+    request.nextUrl.pathname.startsWith("/api/auth/invitations/") ||
     request.nextUrl.pathname === "/recuperar" ||
     request.nextUrl.pathname.startsWith("/recuperar/") ||
     request.nextUrl.pathname.startsWith("/api/auth/recovery/")
