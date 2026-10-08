@@ -1,4 +1,6 @@
 import { requireAccess } from "@/lib/auth/session";
+import { canManageClients } from "@/lib/auth/validation";
+import { NewClientForm } from "./new-client-form";
 export async function ClientList() {
   const access = await requireAccess();
   const { data, error } = await access.supabase
@@ -14,6 +16,7 @@ export async function ClientList() {
       <p className="mt-3 text-sm text-slate-500">
         Información de la empresa autorizada para tu sesión.
       </p>
+      {canManageClients(access.role) && <NewClientForm />}
       <section className="card mt-8 overflow-x-auto p-6">
         {error ? (
           <p role="alert" className="text-sm text-red-700">
