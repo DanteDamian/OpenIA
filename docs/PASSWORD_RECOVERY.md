@@ -22,20 +22,21 @@ No se modificó la configuración remota de Supabase, no se enviaron correos rea
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://wafzklaioidpqqmbglff.supabase.co`; variable normal, no marcador proxy |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave pública existente de ese proyecto |
-| `AUTH_SITE_URL` | Origen HTTPS exacto del frontend, sin ruta/query. Preferir URL Preview estable o dominio de pruebas |
+| `VERCEL_URL` | Variable de sistema suministrada por Vercel: hostname del deployment actual, sin protocolo. No definirla manualmente |
+| `AUTH_SITE_URL` | Obligatoria en Production: origen HTTPS explícito sin ruta/query. En Preview se ignora, aunque contenga una URL anterior |
 | `AUTH_RECOVERY_SECRET` | **Secreto de servidor**, 32 bytes aleatorios en hexadecimal: 64 caracteres. Generarlo mediante `openssl rand -hex 32` en una terminal privada e introducirlo directamente en el campo seguro de Vercel. Nunca prefijo NEXT_PUBLIC, Git, logs o chat |
 
 No usar access token administrativo, clave secret/service_role, contraseña de base de datos ni clave publishable como secreto de cifrado. La aplicación necesita el valor real de `AUTH_RECOVERY_SECRET` en su proceso; no sirve un binding de secreto que solo se sustituye en el proxy HTTPS. Usar el mismo secreto en las instancias del mismo deployment; rotarlo invalida autorizaciones de recuperación pendientes. No publicar su valor ni copiar un marcador de Codex a Vercel.
 
-Si AUTH_SITE_URL está ausente en Preview, se usa `https://${VERCEL_URL}` suministrado por Vercel para ese deployment. No usar PUBLIC Supabase URL como origen del frontend. En producción el origen debe configurarse explícitamente; en cualquier despliegue Vercel y NODE_ENV=production se rechazan localhost/loopback incluso con HTTPS. HTTP loopback solo se acepta en desarrollo local sin Vercel. Configuración inválida/secreto ausente devuelve 503 y deshabilita el formulario; no cae a localhost ni usa un Host enviado por el cliente.
+En Preview se usa siempre `https://${VERCEL_URL}` suministrado por Vercel para ese deployment; AUTH_SITE_URL no tiene prioridad ni actúa como fallback. Si falta VERCEL_URL o es inválido, se falla cerrado. Login, logout, las tres APIs de recuperación y las escrituras de clientes usan el mismo selector de origen confiable. No usar PUBLIC Supabase URL como origen del frontend. En producción el origen debe configurarse explícitamente; en cualquier despliegue Vercel y NODE_ENV=production se rechazan localhost/loopback incluso con HTTPS. HTTP loopback solo se acepta en desarrollo local sin Vercel. Configuración inválida/secreto ausente devuelve 503 y deshabilita el formulario; no cae a localhost ni usa un Host enviado por el cliente.
 
-Guardar variables exige una nueva compilación Preview. No promover a producción ni hacer merge para probar. Si se usa una URL Preview diferente por deployment, registrar **su destino exacto** en Supabase antes de enviar enlaces; una URL estable de pruebas evita editar la allowlist en cada compilación.
+Guardar variables exige una nueva compilación Preview. No promover a producción ni hacer merge para probar. Si se usa una URL Preview diferente por deployment, registrar **su destino exacto** en Supabase antes de enviar enlaces; acceder mediante un alias de rama o dominio distinto de VERCEL_URL devuelve 403 deliberadamente. Usar la URL HTTPS exacta del deployment, no su alias. No se permiten alias automáticamente mediante Host o encabezados reenviados.
 
 ## Plantilla y allowlist requeridas en Supabase
 
 Estos son cambios de configuración para el responsable autorizado; **no se aplicaron en esta tarea** y no se ampliaron permisos administrativos:
 
-1. En Authentication → URL Configuration, verificar Site URL **HTTPS** del frontend autorizado y añadir a Redirect URLs exactamente `https://<FRONTEND_AUTORIZADO>/recuperar/confirmar`. No comodines amplios ni localhost para Preview. El destino debe coincidir con AUTH_SITE_URL o VERCEL_URL efectivo. Si Supabase rechaza el redirect, puede usar Site URL: por eso ambos deben ser HTTPS adecuados antes de habilitar envíos.
+1. En Authentication → URL Configuration, verificar Site URL **HTTPS** del frontend autorizado y añadir a Redirect URLs exactamente `https://<FRONTEND_AUTORIZADO>/recuperar/confirmar`. No comodines amplios ni localhost para Preview. El destino debe coincidir con VERCEL_URL en Preview o AUTH_SITE_URL en Production. Si Supabase rechaza el redirect, puede usar Site URL: por eso ambos deben ser HTTPS adecuados antes de habilitar envíos.
 2. En Authentication → Email Templates → Reset Password, usar una plantilla de recuperación que incluya:
 
 ```html
@@ -60,3 +61,11 @@ El runner de integración usa GoTrue real exclusivamente en Docker local, con id
 La entrega y apertura del correo en un Preview real requieren plantilla, allowlist, secreto y SMTP configurados por el responsable. No se declara esa prueba remota ejecutada. No crear usuarios, asignar administradores ni invocar bootstrap para probar esta implementación sin autorización de ese alcance.
 
 Resultados locales: 25 pruebas unitarias en seis archivos y 104 comprobaciones de integración Auth/PostgREST/Next.js aprobadas. Lint, typecheck y build aprobados; test:db conserva sus comprobaciones de integridad/RLS. Ejecutar el build y test:integration **secuencialmente**: el runner inicia Next dev y sus tipos generados comparten el checkout con el build. Una ejecución simultánea produjo TS6053 al desaparecer tipos dev durante la compilación; la compilación posterior secuencial pasó sin cambios en tsconfig ni deshabilitar TypeScript.
+
+## Corrección de origen en Redeploy Preview
+
+La regresión ocurría porque AUTH_SITE_URL anterior tenía prioridad sobre VERCEL_URL. El selector compartido ahora toma exclusivamente el hostname de sistema del deployment Preview; Production sigue exigiendo AUTH_SITE_URL. Compara Origin literalmente con ese origen, rechazando Origin ausente/null, dominios ajenos, esquemas/puertos diferentes y encabezados Host/Forwarded manipulados. No cambia el cifrado, la validación OTP, las sesiones ni las restricciones de redirección.
+
+Para activar: comprobar que Vercel expone las variables de sistema (Settings → Environment Variables → Automatically expose System Environment Variables, si aparece esa opción), conservar las variables Supabase y AUTH_RECOVERY_SECRET existentes y compilar un nuevo Preview de esta rama. No guardar VERCEL_URL manualmente ni actualizar AUTH_SITE_URL en cada Redeploy. No se solicita ningún secreto nuevo. La entrada exacta del callback en la allowlist y la plantilla de Supabase siguen siendo requisitos para entregar un enlace utilizable; no se consultan ni modifican en esta corrección.
+
+Las verificaciones anteriores de integración son históricas. Esta corrección ejecuta lint, typecheck, pruebas unitarias con proveedores simulados y build; no ejecuta test:db ni test:integration, que aplicarían migraciones y crearían fixtures locales bajo las restricciones actuales. Los resultados actuales se registran en docs/PREVIEW_ORIGIN_VALIDATION.md.

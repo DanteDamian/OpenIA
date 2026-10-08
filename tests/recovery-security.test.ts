@@ -32,7 +32,7 @@ describe("Seguridad de recuperación", () => {
       "javascript:alert(1)",
     ]) {
       expect(
-        recoveryOrigin({ AUTH_SITE_URL: value, VERCEL_ENV: "preview" }),
+        recoveryOrigin({ AUTH_SITE_URL: value, VERCEL_ENV: "production" }),
       ).toBeNull();
     }
     expect(

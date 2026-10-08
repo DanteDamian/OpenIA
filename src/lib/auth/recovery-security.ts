@@ -1,31 +1,8 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+export { authOrigin as recoveryOrigin } from "./origin";
 
 export const recoveryCookie = "aigenterra-recovery";
 export const recoveryLifetime = 600;
-export function recoveryOrigin(env: Record<string, string | undefined>) {
-  const value =
-    env.AUTH_SITE_URL ||
-    (env.VERCEL_ENV === "preview" && env.VERCEL_URL
-      ? `https://${env.VERCEL_URL}`
-      : "");
-  try {
-    const url = new URL(value);
-    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-    if (
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash ||
-      !["", "/"].includes(url.pathname) ||
-      (local && (env.NODE_ENV === "production" || !!env.VERCEL_ENV)) ||
-      (url.protocol !== "https:" && !(local && url.protocol === "http:"))
-    )
-      return null;
-    return url.origin;
-  } catch {
-    return null;
-  }
-}
 export function validRecoveryToken(value: unknown): value is string {
   return typeof value === "string" && /^[a-zA-Z0-9_-]{20,512}$/.test(value);
 }

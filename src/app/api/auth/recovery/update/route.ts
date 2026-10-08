@@ -1,3 +1,4 @@
+import { hasTrustedOrigin } from "@/lib/auth/origin";
 import { cookies } from "next/headers";
 import { boundedJson, json } from "@/lib/auth/http";
 import { recoveryConfiguration, recoveryClient } from "@/lib/auth/recovery";
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
   const config = recoveryConfiguration();
   if (!config)
     return json({ error: "Recuperación pendiente de configuración." }, 503);
-  if (request.headers.get("origin") !== config.origin)
+  if (!hasTrustedOrigin(request, config.origin))
     return json({ error: "Solicitud no autorizada." }, 403);
   const store = await cookies();
   const grant = openRecovery(store.get(recoveryCookie)?.value, config.secret);

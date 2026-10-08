@@ -10,7 +10,7 @@ La capa de acceso verifica nuevamente la identidad y consulta solo las membresí
 
 El layout y las páginas administrativas validan acceso; las APIs también realizan sus propias comprobaciones. `/api/clients` implementa consulta, creación y actualización de cliente con lista blanca de campos, empresa tomada del contexto autorizado y filtros de empresa/ID. Admin y manager pueden editar; accountant y viewer solo consultar. RLS vuelve a aplicar el control en la base. No se usa service_role en la aplicación.
 
-Las escrituras, login y logout requieren Origin idéntico al origen de la solicitud. Las entradas JSON tienen límite de 8 KiB. Los errores de login son genéricos y no revelan si existe un correo. Los límites de intentos los aplica Supabase Auth; deben ajustarse en el proyecto al preparar staging.
+Las escrituras, login y logout requieren Origin idéntico al origen confiable configurado en servidor (VERCEL_URL en Preview; AUTH_SITE_URL obligatorio en Production), sin derivarlo de Host ni de encabezados reenviados. Las entradas JSON tienen límite de 8 KiB. Los errores de login son genéricos y no revelan si existe un correo. Los límites de intentos los aplica Supabase Auth; deben ajustarse en el proyecto al preparar staging.
 
 `/api/auth/logout` cierra la sesión actual y borra cookies. Los JWT ya emitidos tienen la vida útil establecida por Auth; no se promete revocación inmediata de todos los bearer tokens. MFA, invitaciones y gestión visual de membresías quedan fuera de este incremento. La [recuperación de contraseña](PASSWORD_RECOVERY.md) incluye solicitud de correo, verificación OTP, autorización cifrada y cambio de contraseña; su activación en Preview requiere los ajustes de entorno/plantilla documentados.
 

@@ -28,25 +28,22 @@ describe("Límites de autorización", () => {
     });
   });
   it("rechaza CSRF sin Origin o desde otro origen", () => {
-    expect(sameOrigin(new Request("https://app.example/api"))).toBe(false);
-    expect(
-      sameOrigin(
-        new Request("https://app.example/api", {
-          headers: { origin: "https://evil.example" },
-        }),
-      ),
-    ).toBe(false);
-    expect(
-      sameOrigin(
-        new Request("https://app.example/api", {
-          headers: { origin: "https://app.example" },
-        }),
-      ),
-    ).toBe(true);
+    const env = { AUTH_SITE_URL: "https://app.example" };
+    expect(sameOrigin(new Request("https://app.example/api"), env)).toBe(false);
+    for (const origin of ["https://evil.example", "null", "https://app.example"])
+      expect(sameOrigin(new Request("http://internal/api", {
+        headers: { origin },
+      }), env)).toBe(origin === "https://app.example");
   });
-  it("usa Host canónico de Next.js e ignora X-Forwarded-Host", () => {
-    expect(sameOrigin(new Request("http://localhost:3000/api", { headers: { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" } }))).toBe(true);
-    expect(sameOrigin(new Request("https://app.example/api", { headers: { host: "app.example", origin: "https://evil.example", "x-forwarded-host": "evil.example" } }))).toBe(false);
+  it("ignora Host y encabezados reenviados al determinar el origen confiable", () => {
+    const env = { AUTH_SITE_URL: "https://app.example" };
+    expect(sameOrigin(new Request("http://internal/api", {
+      headers: { host: "evil.example", origin: "https://evil.example",
+        "x-forwarded-host": "evil.example", "x-forwarded-proto": "https" },
+    }), env)).toBe(false);
+    expect(sameOrigin(new Request("http://internal/api", {
+      headers: { host: "internal", origin: "https://app.example" },
+    }), env)).toBe(true);
   });
   it("valida UUID", () => {
     expect(validUuid("invalid")).toBe(false);

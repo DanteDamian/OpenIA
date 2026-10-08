@@ -1,3 +1,4 @@
+import { authOrigin, hasTrustedOrigin } from "./origin";
 export function validUuid(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -33,10 +34,9 @@ export function clientInput(value: unknown) {
     email: typeof input.email === "string" ? input.email.trim() : null,
   };
 }
-export function sameOrigin(request: Request) {
-  const url = new URL(request.url);
-  // Next.js puede usar localhost internamente; Host sigue siendo el destino
-  // de la petición. Nunca confiar en X-Forwarded-Host enviado por el cliente.
-  const host = request.headers.get("host") || url.host;
-  return request.headers.get("origin") === `${url.protocol}//${host}`;
+export function sameOrigin(
+  request: Request,
+  env: Record<string, string | undefined> = process.env,
+) {
+  return hasTrustedOrigin(request, authOrigin(env));
 }

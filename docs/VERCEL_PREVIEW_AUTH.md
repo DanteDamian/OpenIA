@@ -50,3 +50,11 @@ Lint, typecheck, las 15 pruebas unitarias y build aprobados. Tras compilar con l
 La inspección del código no encontró uso del access token administrativo en src ni configuración de Vercel/Next que lo exponga. En los 13 archivos JavaScript del navegador generados por build no aparecieron los valores de proceso de los bindings access token/publishable. El formulario solo usa el endpoint de la aplicación. La consulta real de clientes con clave publishable sin sesión devolvió 401, sin acceso administrativo. Esto no sustituye revisar los valores y ámbitos efectivos de las variables del dashboard de Vercel, que no se consultó ni modificó.
 
 Se publica este ajuste con `[skip ci]` para evitar que los jobs automáticos de Docker ejecuten migraciones y creen fixtures bajo las restricciones de esta tarea. No se desactiva ni modifica el workflow; no se afirma una nueva CI aprobada. No se ejecuta Vercel CLI ni se promueve un deployment a producción; la integración Git existente puede generar su Preview automáticamente al publicar la rama.
+
+## Origen después de cada Redeploy
+
+Preview usa exclusivamente `https://${VERCEL_URL}` del deployment actual para login, logout, recuperación y escrituras de clientes. AUTH_SITE_URL anterior se ignora. Production exige AUTH_SITE_URL explícito y HTTPS. En desarrollo local definir AUTH_SITE_URL con el origen loopback del servidor; el origen nunca se deduce de la petición.
+
+No crear ni actualizar manualmente VERCEL_URL. Comprobar exposición automática de variables de sistema en Vercel y usar la URL HTTPS exacta del deployment, no el alias de rama. Compilar un nuevo Preview con esta rama, conservando las variables existentes; no hacen falta secretos nuevos. Las solicitudes desde un alias u otro origen continúan devolviendo 403 para mantener la protección CSRF.
+
+La allowlist de Supabase debe contener exactamente `https://<VERCEL_URL>/recuperar/confirmar` para el correo de recuperación, junto con la plantilla documentada. Esta corrección no modifica ni comprueba esa configuración remota y no demuestra entrega de correo. Resultados de la corrección: [PREVIEW_ORIGIN_VALIDATION.md](PREVIEW_ORIGIN_VALIDATION.md).
