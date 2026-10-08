@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "AIGENTERRA Finance AI",
@@ -17,7 +16,7 @@ export default function RootLayout({
         >
           Saltar al contenido
         </a>
-        <AppShell>{children}</AppShell>
+        {children}
       </body>
     </html>
   );

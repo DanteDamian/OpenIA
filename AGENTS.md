@@ -12,6 +12,8 @@
 - Antes de gestionar datos reales: implementar autenticación, autorización en servidor, RLS por organización, validación de entradas y auditoría. No confiar en ocultar controles de interfaz como autorización.
 - No registrar datos personales, cookies de sesión ni información financiera sensible. Revisar dependencias y no desactivar TLS o controles de integridad.
 - Mantener accesibilidad: semántica, navegación por teclado, foco visible, etiquetas y responsive.
+- Para cambios de Auth/RLS, ejecutar npm run test:db y npm run test:integration con fixtures locales descartables; nunca reutilizar secretos ni URLs remotas en el runner.
+- Verificar identidad con Supabase Auth en servidor y membresía en cada entrada de datos. No confiar en getSession, user_metadata ni cookies de empresa para autorizar. Preferir SECURITY INVOKER; revisar search_path, grants y alcance de cada SECURITY DEFINER.
 - No modificar otros repositorios. No sobrescribir trabajo ajeno.
 
 <!-- BEGIN:nextjs-agent-rules -->

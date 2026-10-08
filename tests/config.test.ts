@@ -29,7 +29,7 @@ describe("Configuración segura de Supabase", () => {
 });
 describe("Rutas de módulos", () => {
   it("cada módulo tiene una ruta única resoluble", () => {
-    expect(new Set(modules.map((m) => m.slug)).size).toBe(7);
+    expect(new Set(modules.map((m) => m.slug)).size).toBe(9);
     modules.forEach((m) => expect(getModule(m.slug)).toBe(m));
   });
   it("rechaza módulos desconocidos", () =>
