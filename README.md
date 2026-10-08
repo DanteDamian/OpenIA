@@ -50,3 +50,13 @@ CI ejecuta instalación con lockfile, lint, tipos, pruebas y compilación. Resul
 Trabajar en `develop/aigenterra-finance-ai`. Publicar la rama y abrir un PR hacia la rama principal una vez exista una base remota. El repositorio original está vacío y no tiene `main`; no se crea una rama de producción de forma implícita.
 
 En Vercel importar el repositorio con preset Next.js, Node.js 24, instalación `npm ci` y compilación `npm run build`. Asignar variables de Supabase a Preview cuando se vaya a probar la integración. Usar despliegues Preview del PR para revisión; producción requiere aprobación independiente. Ningún despliegue se realiza con esta entrega.
+
+## Base de datos v1
+
+Migraciones versionadas en `supabase/migrations/`, sin aplicación remota automática. El modelo usa Supabase Auth y RLS por empresa. Ver [modelo de datos](docs/DATA_MODEL.md) y [procedimiento de despliegue](docs/DATABASE_DEPLOYMENT.md).
+
+```sh
+npm run test:db
+```
+
+Requiere Docker y verifica migraciones en PostgreSQL 17 efímero. No crea usuarios ni movimientos financieros; emula el contrato SQL mínimo de Auth. La interfaz aún no usa las tablas ni implementa login o CRUD.
