@@ -12,6 +12,8 @@ La autorización de recuperación se cifra con AES-256-GCM y un secreto propio d
 
 Todos los POST exigen Origin exactamente igual al origen configurado. No se deriva la URL de Host, X-Forwarded-Host, next, returnTo o redirectTo del usuario. Los cuerpos JSON tienen límite de 8 KiB. No se imprimen contraseñas, hashes ni tokens en logs de aplicación. La autorización cifrada sigue siendo un bearer sensible: no debe registrarse ni compartirse.
 
+Los formularios declaran method=post también para su comportamiento nativo: si JavaScript no se carga, no envían contraseñas/correos en la query de una navegación GET. La interfaz requiere JavaScript para completar el flujo; el fallback nativo no autentica ni actualiza contraseñas.
+
 ## Activación en Vercel Preview
 
 No se modificó la configuración remota de Supabase, no se enviaron correos reales ni se cambiaron contraseñas de personas reales en esta entrega. Para activar el flujo, el responsable configura los siguientes valores en **Settings → Environment Variables**, ámbito **Preview** y rama `feature/supabase-data-model`:

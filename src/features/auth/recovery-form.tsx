@@ -71,7 +71,7 @@ export function RecoveryForm({
     }
   }
   return (
-    <form onSubmit={submit} className="mt-6 space-y-5">
+    <form method="post" onSubmit={submit} className="mt-6 space-y-5">
       {mode === "request" && !complete && (
         <div>
           <label htmlFor="email" className="text-sm font-medium">

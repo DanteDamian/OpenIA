@@ -38,6 +38,7 @@ describe("Enlace de recuperación en el navegador", () => {
     expect(window.location.hash).toBe("");
     expect(window.location.search).toBe("");
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Validar enlace" }).closest("form")).toHaveAttribute("method", "post");
     fireEvent.click(screen.getByRole("button", { name: "Validar enlace" }));
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith("/recuperar/nueva"),
