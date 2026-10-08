@@ -11,7 +11,7 @@ docker run --detach --name "$container" --network none \
   -e POSTGRES_HOST_AUTH_METHOD=trust "$image" >/dev/null
 ready=false
 for attempt in $(seq 1 40); do
-  if docker exec "$container" pg_isready -U postgres >/dev/null 2>&1; then
+  if docker exec "$container" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
     ready=true
     break
   fi

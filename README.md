@@ -12,15 +12,15 @@ cp .env.example .env.local
 npm run dev
 ```
 
-La interfaz funciona sin credenciales. No contiene datos financieros de ejemplo ni persistencia. Clientes, Proyectos, Cotizaciones, Contratos, Facturación, Gastos e Inteligencia Artificial tienen rutas propias y estados vacíos. No incluye CRUD ni login en esta primera etapa.
+Sin configuración de Supabase, la aplicación muestra un acceso pendiente de configuración y bloquea el espacio administrativo. No contiene datos financieros de ejemplo ni persistencia. Clientes, Proyectos, Cotizaciones, Contratos, Facturación, Gastos e Inteligencia Artificial tienen rutas propias y estados vacíos. Incluye login/logout con Supabase Auth y consulta/API de clientes; los demás módulos mantienen estados vacíos.
 
 ## Supabase
 
 Configurar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` o en variables de Vercel. La clave publishable es pública; nunca usar `service_role` ni claves privadas con prefijo `NEXT_PUBLIC_`. Reiniciar desarrollo y recompilar tras cambiar variables públicas.
 
-`src/lib/supabase/client.ts` crea el cliente de navegador bajo demanda. `server.ts` está reservado a Route Handlers y Server Actions que pueden escribir cookies. Estos adaptadores no realizan llamadas mientras no se utilicen. El indicador de configuración solo comprueba presencia/formato de variables, no conectividad.
+`src/lib/supabase/server.ts` maneja sesiones en servidor con cookies HttpOnly; `src/proxy.ts` verifica y renueva sesiones. Nunca se usa getSession como prueba de identidad. La aplicación no tiene un cliente Supabase autenticado en navegador ni usa service_role. Para desarrollo local se admite HTTP solo en loopback; los destinos remotos requieren HTTPS.
 
-Antes de cargar datos reales: definir esquema y migraciones, RLS por organización, autenticación, validación de sesión en servidor (claims o usuario verificado), renovación de sesión y autorización de cada operación. No hay tablas, políticas ni flujo de autenticación desplegados todavía.
+Antes de cargar datos reales: definir esquema y migraciones, RLS por organización, autenticación, validación de sesión en servidor (claims o usuario verificado), renovación de sesión y autorización de cada operación. Las migraciones y el flujo de autenticación están implementados pero no se aplicaron a un proyecto remoto.
 
 OpenAI y Alegra no están conectados y no requieren claves en esta etapa.
 
@@ -59,4 +59,4 @@ Migraciones versionadas en `supabase/migrations/`, sin aplicación remota autom�
 npm run test:db
 ```
 
-Requiere Docker y verifica migraciones en PostgreSQL 17 efímero. No crea usuarios ni movimientos financieros; emula el contrato SQL mínimo de Auth. La interfaz aún no usa las tablas ni implementa login o CRUD.
+Requiere Docker y verifica migraciones en PostgreSQL 17 efímero. Este comando emula el contrato SQL mínimo de Auth y no crea usuarios ni movimientos financieros. Para probar servicios reales locales, `npm run test:integration` crea identidades efímeras autorizadas, organizaciones y clientes no financieros; elimina todo al terminar. La interfaz usa Auth y consulta clientes. Ver [acceso y aprovisionamiento](docs/AUTH_AND_BOOTSTRAP.md).

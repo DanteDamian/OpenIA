@@ -57,21 +57,37 @@ begin
     raise exception 'Client can bootstrap users or escalate roles';
   end if;
   if has_column_privilege('authenticated','public.profiles','id','UPDATE')
-    or has_column_privilege('authenticated','public.organizations','currency','UPDATE') then
+    or has_column_privilege('authenticated','public.organizations','currency','UPDATE')
+    or has_column_privilege('authenticated','public.organizations','slug','UPDATE') then
     raise exception 'Unexpected sensitive column update privilege';
   end if;
   if has_schema_privilege('authenticated','public','CREATE')
     or has_schema_privilege('anon','public','CREATE') then raise exception 'Schema write privilege exposed'; end if;
   if has_function_privilege('anon','private.has_permission(uuid,text,text)','EXECUTE')
     or has_function_privilege('authenticated','private.create_auth_profile()','EXECUTE')
-    or has_function_privilege('authenticated','private.role_allows(text,text,text)','EXECUTE') then
+ then
     raise exception 'Private helper exposed';
   end if;
   if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='private' and 'search_path=""'=any(p.proconfig)) <> 5 then
+      where n.nspname='private' and 'search_path=""'=any(p.proconfig)) <> 6 then
     raise exception 'Private functions must pin empty search_path';
   end if;
 
+  if (select prosecdef from pg_proc where oid='private.has_permission(uuid,text,text)'::regprocedure) then
+    raise exception 'Permission resolver must be SECURITY INVOKER';
+  end if;
+  if (select prosecdef from pg_proc where oid='private.bootstrap_aigenterra(uuid[],text)'::regprocedure)
+     or has_function_privilege('authenticated','private.bootstrap_aigenterra(uuid[],text)','EXECUTE')
+     or has_function_privilege('service_role','private.bootstrap_aigenterra(uuid[],text)','EXECUTE') then
+    raise exception 'Bootstrap exposed or privileged';
+  end if;
+  if (select count(*) from pg_proc where pronamespace='private'::regnamespace and prosecdef) <> 1 then
+    raise exception 'Unexpected SECURITY DEFINER routine';
+  end if;
+  if has_table_privilege('authenticated','private.organization_bootstrap_audit','SELECT,INSERT,UPDATE,DELETE')
+    or has_table_privilege('service_role','private.organization_bootstrap_audit','SELECT,INSERT,UPDATE,DELETE') then
+    raise exception 'Bootstrap approval audit exposed';
+  end if;
   -- Matriz completa: 4 roles x 11 recursos x 4 operaciones, sin usuarios de prueba.
   foreach member_role in array array['admin','manager','accountant','viewer'] loop
     foreach resource in array array['organizations','memberships','clients','contacts','opportunities',

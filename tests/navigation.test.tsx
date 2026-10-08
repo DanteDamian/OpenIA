@@ -10,7 +10,10 @@ import {
 import "@testing-library/jest-dom/vitest";
 import { AppShell } from "../src/components/layout/app-shell";
 import { Dashboard } from "../src/features/dashboard/dashboard";
-vi.mock("next/navigation", () => ({ usePathname: () => "/clientes" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/clientes",
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
+}));
 afterEach(cleanup);
 describe("Navegación administrativa", () => {
   it("marca la ruta actual y abre el menú móvil", () => {

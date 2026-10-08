@@ -7,7 +7,22 @@ export function readSupabaseConfig(env: {
   if (!url || !key) return null;
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== "https:" || !parsed.hostname) return null;
+    const loopback = ["127.0.0.1", "localhost", "[::1]"].includes(
+      parsed.hostname,
+    );
+    if (
+      !(
+        parsed.protocol === "https:" ||
+        (parsed.protocol === "http:" && loopback)
+      ) ||
+      !parsed.hostname ||
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash ||
+      !["", "/"].includes(parsed.pathname)
+    )
+      return null;
   } catch {
     return null;
   }

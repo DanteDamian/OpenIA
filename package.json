@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "bash scripts/test-database.sh"
+    "test:db": "bash scripts/test-database.sh",
+    "test:integration": "node scripts/test-auth-integration.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

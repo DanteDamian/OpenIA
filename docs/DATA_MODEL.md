@@ -4,22 +4,22 @@ El modelo separa identidad de Supabase Auth, autorización por empresa y operaci
 
 ## Entidades
 
-| Tabla | Responsabilidad y relaciones |
-| --- | --- |
-| `auth.users` | Identidad gestionada por Supabase Auth. No se crea en las migraciones ni se duplican contraseñas. |
-| `profiles` | Perfil de cada identidad; PK/FK `id → auth.users.id`. Un trigger crea el perfil vacío tras un alta legítima de Auth. Se incorporan perfiles de identidades reales preexistentes al migrar. |
-| `roles` | Catálogo inmutable desde el cliente: admin, manager, accountant, viewer. |
-| `organizations` | Empresa y moneda de trabajo; primera versión limitada a COP. |
-| `organization_memberships` | Relación usuario/empresa con un rol. PK `(organization_id, user_id)`. Una persona puede pertenecer a varias empresas. |
-| `clients` | Datos comerciales y documento opcional, único por tipo/número dentro de la empresa. |
-| `contacts` | Personas de contacto de un cliente. |
-| `opportunities` | Oportunidad vinculada a cliente y, opcionalmente, contacto del mismo cliente. |
-| `quotes` | Cotización numerada por empresa, cliente y oportunidad opcional. |
-| `contracts` | Contrato numerado por empresa, cliente y cotización opcional. |
-| `projects` | Proyecto de un cliente, con contrato opcional. |
-| `invoices` | Registro administrativo de factura, cliente, proyecto/contrato opcionales y vencimiento. No es facturación electrónica. |
-| `payments` | Pago de una factura de la misma empresa. Referencia externa opcional única por empresa para reducir duplicados. |
-| `expenses` | Gasto con proveedor, categoría, soporte/referencia opcional y proyecto opcional. |
+| Tabla                      | Responsabilidad y relaciones                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `auth.users`               | Identidad gestionada por Supabase Auth. No se crea en las migraciones ni se duplican contraseñas.                                                                                          |
+| `profiles`                 | Perfil de cada identidad; PK/FK `id → auth.users.id`. Un trigger crea el perfil vacío tras un alta legítima de Auth. Se incorporan perfiles de identidades reales preexistentes al migrar. |
+| `roles`                    | Catálogo inmutable desde el cliente: admin, manager, accountant, viewer.                                                                                                                   |
+| `organizations`            | Empresa y moneda de trabajo; primera versión limitada a COP.                                                                                                                               |
+| `organization_memberships` | Relación usuario/empresa con un rol. PK `(organization_id, user_id)`. Una persona puede pertenecer a varias empresas.                                                                      |
+| `clients`                  | Datos comerciales y documento opcional, único por tipo/número dentro de la empresa.                                                                                                        |
+| `contacts`                 | Personas de contacto de un cliente.                                                                                                                                                        |
+| `opportunities`            | Oportunidad vinculada a cliente y, opcionalmente, contacto del mismo cliente.                                                                                                              |
+| `quotes`                   | Cotización numerada por empresa, cliente y oportunidad opcional.                                                                                                                           |
+| `contracts`                | Contrato numerado por empresa, cliente y cotización opcional.                                                                                                                              |
+| `projects`                 | Proyecto de un cliente, con contrato opcional.                                                                                                                                             |
+| `invoices`                 | Registro administrativo de factura, cliente, proyecto/contrato opcionales y vencimiento. No es facturación electrónica.                                                                    |
+| `payments`                 | Pago de una factura de la misma empresa. Referencia externa opcional única por empresa para reducir duplicados.                                                                            |
+| `expenses`                 | Gasto con proveedor, categoría, soporte/referencia opcional y proyecto opcional.                                                                                                           |
 
 ```mermaid
 erDiagram
@@ -59,18 +59,18 @@ Los índices cubren pertenencia por usuario, consultas empresa/fecha, FK, vencim
 
 Las 13 tablas públicas tienen RLS habilitado y forzado desde la primera migración; la segunda añade 37 políticas. Si falla la segunda, las tablas permanecen cerradas. `anon` no recibe permisos de tablas. La identidad proviene exclusivamente de `auth.uid()` a partir de una sesión verificada por Supabase Auth/PostgREST. Nunca se concede un rol a partir de `user_metadata` o parámetros enviados por el navegador.
 
-| Rol de empresa | Lectura | Escritura | Eliminación |
-| --- | --- | --- | --- |
-| admin | Datos de su empresa | Empresa y todos los módulos | Clientes, contactos, oportunidades y proyectos, si no tienen referencias |
-| manager | Datos de su empresa | Clientes, contactos, oportunidades, cotizaciones, contratos y proyectos | Clientes, contactos, oportunidades y proyectos, si no tienen referencias |
-| accountant | Datos de su empresa | Facturas, pagos y gastos | Ninguna |
-| viewer | Datos de su empresa | Ninguna | Ninguna |
+| Rol de empresa | Lectura             | Escritura                                                               | Eliminación                                                              |
+| -------------- | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| admin          | Datos de su empresa | Empresa y todos los módulos                                             | Clientes, contactos, oportunidades y proyectos, si no tienen referencias |
+| manager        | Datos de su empresa | Clientes, contactos, oportunidades, cotizaciones, contratos y proyectos | Clientes, contactos, oportunidades y proyectos, si no tienen referencias |
+| accountant     | Datos de su empresa | Facturas, pagos y gastos                                                | Ninguna                                                                  |
+| viewer         | Datos de su empresa | Ninguna                                                                 | Ninguna                                                                  |
 
-Los perfiles son visibles/editables solo por su dueño; solo `display_name` es editable. Las membresías son visibles a miembros de la misma empresa. Los roles son un catálogo legible por sesiones autenticadas. Ningún cliente puede crear empresas, perfiles o membresías ni alterar roles: la incorporación de una empresa y sus personas reales requiere un procedimiento administrativo confiable. Ni siquiera un admin puede elevar privilegios mediante la API pública.
+Los perfiles son visibles/editables solo por su dueño; solo `display_name` es editable. Cada usuario solo puede consultar sus propias membresías. Los roles son un catálogo legible por sesiones autenticadas. Ningún cliente puede crear empresas, perfiles o membresías ni alterar roles: la incorporación inicial de AIGENTERRA usa private.bootstrap_aigenterra, reservado al operador postgres, con identidades confirmadas y referencia de aprobación. Ni siquiera un admin puede elevar privilegios mediante la API pública.
 
-Las políticas INSERT usan WITH CHECK; UPDATE valida tanto la fila anterior como la nueva. La comprobación de membresía es SECURITY DEFINER, de solo lectura y con search_path vacío; evita recursión de RLS. Su propietario debe tener BYPASSRLS, como el rol de migraciones `postgres` de Supabase. Los helpers están en `private`, que no debe exponerse en la configuración de PostgREST. Solo `has_permission` es ejecutable por `authenticated`; el resto no se expone.
+Las políticas INSERT usan WITH CHECK; UPDATE valida tanto la fila anterior como la nueva. La comprobación de membresía es SECURITY INVOKER, de solo lectura y con search_path vacío. La política de membresías compara únicamente user_id con auth.uid(), sin recursión. El llamador nunca gana privilegios del propietario. Los helpers están en `private`, que no debe exponerse en la configuración de PostgREST. Solo `has_permission` y la función pura `role_allows` son ejecutables por `authenticated`. Ninguna está en un esquema expuesto por PostgREST. El trigger de perfil es el único SECURITY DEFINER: solo inserta el UUID de la nueva identidad Auth, no lee metadata ni asigna roles; el cliente no puede ejecutarlo.
 
-`service_role` es una capacidad administrativa de servidor que elude RLS. Debe mantenerse fuera del navegador y del repositorio; cada proceso que la use debe validar autorización de forma independiente. La interfaz existente aún no usa estas tablas ni implementa login.
+`service_role` es una capacidad administrativa de servidor que elude RLS. Debe mantenerse fuera del navegador y del repositorio; cada proceso que la use debe validar autorización de forma independiente. Next.js verifica la sesión con Auth en servidor, renueva cookies con proxy.ts y vuelve a validar membresía en cada entrada de datos. La consulta y API de clientes usan el token del usuario y RLS, sin service_role.
 
 ## Alcance pendiente
 

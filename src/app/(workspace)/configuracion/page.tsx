@@ -1,6 +1,8 @@
+import { requireAccess } from "@/lib/auth/session";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 export const dynamic = "force-dynamic";
-export default function Configuration() {
+export default async function Configuration() {
+  await requireAccess();
   const configured = Boolean(getSupabaseConfig());
   return (
     <>
@@ -17,7 +19,7 @@ export default function Configuration() {
               ? "Variables configuradas"
               : "Pendiente de configuración",
             text: configured
-              ? "La conexión y la autenticación aún no han sido verificadas."
+              ? "La sesión se verificó mediante Supabase Auth."
               : "Configura la URL del proyecto y su clave pública para preparar la conexión.",
           },
           {
@@ -41,9 +43,9 @@ export default function Configuration() {
         ))}
       </div>
       <aside className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
-        Esta versión contiene únicamente la interfaz inicial. Antes de cargar
-        información real, habilita autenticación, autorización y políticas de
-        acceso a los datos.
+        Esta versión dispone de acceso autenticado y consulta de clientes. Antes
+        de cargar información real, habilita autenticación, autorización y
+        políticas de acceso a los datos.
       </aside>
     </>
   );

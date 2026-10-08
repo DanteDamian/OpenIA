@@ -1,25 +1,26 @@
-# Verificación de la base de datos v1
+# Verificación del modelo y acceso autenticado — PR #2
 
-## Ejecutado en esta entrega
-
-| Comprobación | Resultado |
+| Comprobación | Resultado ejecutado localmente |
 | --- | --- |
-| `npm run test:db` | Aprobado en PostgreSQL 17 efímero; ambas migraciones aplicadas en orden |
-| Primera migración sin políticas | 13 tablas cerradas para anon y authenticated, incluso con defaults amplios |
-| Integridad SQL | PK, FK validadas, empresa en relaciones compuestas, índices de FK, precisión decimal, totales generados, restricciones de descuento/importe/fechas y triggers verificados |
-| Seguridad SQL | RLS forzado, 37 políticas, grants mínimos, helpers privados con search_path fijo y 176 combinaciones de rol/recurso/operación verificadas |
-| Roles PostgreSQL reales | SELECT anónimo rechazado; sesión authenticated sin membresía no ve datos empresariales; INSERT sin membresía y cambios del catálogo de roles rechazados |
-| Escalamiento con metadata | Claims con metadata admin no conceden permisos sin membresía; no se crea usuario Auth |
-| `npm test` | 8 pruebas de aplicación aprobadas, 2 archivos |
+| `npm run test:db` | Tres migraciones aplicadas en PostgreSQL 17 efímero; integridad, grants, RLS y matriz de 176 combinaciones aprobadas |
+| `npm run test:integration` | 82 comprobaciones aprobadas con Supabase Auth GoTrue 2.196.0, PostgREST 14.17 y Next.js reales locales |
+| Aprovisionamiento | AIGENTERRA local registrada con administrador confirmado; repetición idempotente y auditoría única; IDs vacíos, duplicados, inexistentes, no confirmados y aprobaciones nuevas rechazados |
+| Privilegios | Invocaciones de bootstrap como authenticated/service_role denegadas; RPC privadas no expuestas; resolver de permisos SECURITY INVOKER |
+| Identidad | Password grant, perfil por trigger, renovación de tokens, rechazo de JWT falsificados/expirados y metadata sin elevación |
+| Organización y roles | Lectura por miembros, edición CRM admin/manager, bloqueo de viewer/accountant, ocultamiento entre empresas, FK cruzada rechazada y membresías solo propias |
+| Next.js | Login, cookies HttpOnly, workspace protegido, API con empresa autorizada, renovación de cookies desde proxy, cookie inválida, CSRF, asignación masiva y logout verificados |
+| `npm test` | 15 pruebas unitarias aprobadas en 3 archivos |
 | `npm run lint` | Aprobado |
-| `npm run typecheck` | Aprobado |
-| `npm run build` | Aprobado |
-| Bash y TOML | Script sin errores de sintaxis; config TOML válido; private excluido y seeds deshabilitados |
+| `npm run build` | Compilación y TypeScript aprobados con configuración Supabase vacía |
 
-La validación SQL se repitió tras incorporar la protección al final de la primera migración. Cada ejecución comenzó con una base nueva y eliminó su contenedor al terminar. Solo persistió el catálogo de roles dentro del contenedor; no hubo usuarios, empresas, clientes ni movimientos financieros de ejemplo. Las restricciones monetarias se ejercitaron evaluando sus expresiones CHECK con escalares, sin insertar datos financieros.
+`test:db` usa el contrato SQL mínimo de Auth sin usuarios ni datos de negocio. `test:integration` usa el servicio Auth real para crear identidades efímeras `example.invalid`, organizaciones y clientes no financieros, con autorización del usuario. Claves y contraseñas se generan en tiempo de ejecución y no se incorporan al repositorio. Cada ejecución elimina sus contenedores, red, procesos y archivos temporales.
 
-## Límites de la evidencia
+No se insertaron cotizaciones, contratos, facturas, pagos ni gastos. Los CHECK monetarios se prueban con expresiones escalares, sin movimientos financieros almacenados. El único catálogo insertado por migraciones es el de roles.
 
-El bootstrap emula el contrato SQL de Auth, no su servicio HTTP. Las pruebas de FK entre empresas inspeccionan restricciones activas y validadas; no crean personas o empresas de ejemplo. La matriz de roles se comprueba como función pura. Al estar prohibida la creación de usuarios ficticios, no se ejecutó una prueba de acceso positivo/negativo con dos usuarios Auth y filas empresariales reales.
+## Alcance y límites
 
-La integración completa Supabase Auth/PostgREST, altas legítimas y autorización multiempresa debe validarse en staging con identidades reales autorizadas antes de usar información real. La interfaz aún no integra login ni CRUD. No se realizaron operaciones sobre bases remotas ni producción.
+La matriz SQL cubre todos los roles y recursos; los casos con filas reales locales de PostgREST cubren CRM, perfiles y membresías, sin fabricar registros financieros. El runner prueba HTTP de Next.js, no un navegador visual ni MFA.
+
+El montaje local incluye el helper estándar auth.uid y las rutas Supabase de Auth/PostgREST; no representa todos los servicios gestionados de Supabase. El proyecto remoto puede tener otra configuración de Auth, redirects, límites de intentos y secretos. Su validación en staging queda pendiente y no se sustituye por estos resultados.
+
+No se aplicaron migraciones remotas, no se usaron credenciales reales, no se modificó producción y no se hizo merge.

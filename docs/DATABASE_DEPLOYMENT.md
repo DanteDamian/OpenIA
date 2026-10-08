@@ -4,10 +4,11 @@
 
 Solo se ejecutaron migraciones en PostgreSQL efímero de Docker, aislado de la red, sin puertos publicados ni volúmenes. No se vinculó un proyecto remoto, no se configuraron credenciales y no se ejecutaron migraciones en producción.
 
-Las versiones iniciales son:
+Las versiones son:
 
 1. `20261008000100_initial_data_model.sql`: entidades, relaciones, restricciones, índices y triggers de perfil/auditoría.
 2. `20261008000200_access_policies.sql`: matriz de permisos, grants y RLS.
+3. `20261008000300_secure_bootstrap.sql`: aprovisionamiento inicial restringido y resolver de permisos SECURITY INVOKER.
 
 Son migraciones transaccionales para una base nueva; no deben ejecutarse manualmente dos veces. El historial de Supabase determina qué versiones aplicar. Después de publicar una migración, los cambios se realizan mediante una versión nueva, nunca editando el archivo ya aplicado.
 
@@ -21,7 +22,7 @@ npm run test:db
 
 El script usa una imagen PostgreSQL 17 fijada por digest, crea una base descartable y ejecuta todas las migraciones y pruebas SQL con ON_ERROR_STOP. Al terminar, incluso ante fallo, elimina su contenedor. Nunca usa DATABASE_URL ni otras variables de conexión. No requiere usuarios de prueba, fixtures financieros ni secretos. El método trust se limita a un contenedor sin red; no debe copiarse a una instancia de despliegue.
 
-`supabase/tests/bootstrap.sql` emula únicamente el contrato SQL mínimo de `auth.users`, `auth.uid()` y roles PostgREST para estas pruebas. No ejecutar ese archivo en Supabase. No se ha probado el servicio GoTrue, el inicio de sesión real ni la API PostgREST. No confundir estas pruebas con una validación completa de Auth.
+`supabase/tests/bootstrap.sql` emula únicamente el contrato SQL mínimo de `auth.users`, `auth.uid()` y roles PostgREST para estas pruebas. No ejecutar ese archivo en Supabase. El comando test:db no prueba el servicio HTTP de Auth. El comando test:integration descrito en AUTH_AND_BOOTSTRAP.md sí utiliza GoTrue y PostgREST reales, exclusivamente locales.
 
 La CI incluye un job separado de PostgreSQL. No realiza conexiones a servicios externos ni despliegues.
 
@@ -46,12 +47,12 @@ Estos pasos son documentación, no una autorización de producción:
 1. Crear/seleccionar un proyecto de **staging nuevo**. Verificar su identidad y que no contiene tablas públicas incompatibles con esta base inicial. No apuntar la CLI a producción.
 2. Autenticarse mediante los mecanismos seguros de la CLI. No incluir tokens ni contraseñas en comandos versionados, capturas, archivos o chat.
 3. Vincular explícitamente el proyecto de staging con `supabase link --project-ref <REFERENCIA_STAGING>`. La información local de vinculación `.temp` está ignorada por Git.
-4. Revisar `supabase migration list --linked`, permisos del propietario de migraciones (BYPASSRLS), backups y la lista de esquemas expuestos. `private` debe quedar fuera de PostgREST.
+4. Revisar `supabase migration list --linked`, permisos del propietario de migraciones y del trigger de perfil, backups y la lista de esquemas expuestos. `private` debe quedar fuera de PostgREST.
 5. Revisar el plan con `supabase db push --linked --dry-run`. Aprobar los SQL antes de aplicar únicamente a ese staging con `supabase db push --linked`.
 6. Verificar restricciones, RLS, grants e índices y comprobar que la creación de una identidad real mediante Supabase Auth produce su perfil sin aceptar roles de user_metadata.
-7. Con personas reales autorizadas y datos de prueba no financieros aprobados, validar acceso con sesiones de dos empresas y cada rol: lecturas, escrituras permitidas/denegadas, referencias cruzadas rechazadas y ausencia de escalamiento. No crear identidades ficticias para esta entrega.
+7. Con personas reales autorizadas y datos de prueba no financieros aprobados, validar acceso con sesiones de dos empresas y cada rol: lecturas, escrituras permitidas/denegadas, referencias cruzadas rechazadas y ausencia de escalamiento. Las identidades efímeras están autorizadas únicamente dentro del entorno local descartable; no crear usuarios de ejemplo en staging o producción.
 
-La empresa inicial y membresías se aprovisionan con acceso administrativo auditado, usando personas reales previamente autenticadas y autorización expresa. No hay RPC pública de onboarding ni asignación automática de admin. Se requiere un procedimiento administrativo antes de comenzar a operar; la creación de un perfil no concede acceso a ninguna empresa.
+La empresa inicial y membresías se aprovisionan con acceso administrativo auditado, usando personas reales previamente autenticadas y autorización expresa. No hay RPC pública de onboarding ni asignación automática de admin. El procedimiento reservado al operador se documenta en AUTH_AND_BOOTSTRAP.md; la creación de un perfil no concede acceso a ninguna empresa.
 
 ## Recuperación y producción
 
