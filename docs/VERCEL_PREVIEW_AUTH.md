@@ -30,7 +30,7 @@ Mantener preset Next.js, Node 24, instalación `npm ci` y build `npm run build`.
 
 En Supabase **Authentication → URL Configuration**, revisar Site URL y Redirect URLs con la URL HTTPS del Preview autorizado. Preferir un dominio estable de prueba o entradas exactas; evitar comodines que permitan otros proyectos/dominios. No sustituir una URL de producción existente para probar un Preview. No se modifican estas opciones en esta entrega.
 
-El flujo actual de password grant inicia sesión sin callback externo; no necesita añadir `/auth/callback`. La aplicación no implementa confirmación por enlace, invitación, recuperación de contraseña ni MFA. No introducir rutas inexistentes en la allowlist ni dar esos flujos por disponibles. La confirmación obligatoria implica que las personas autorizadas deberán tener su correo confirmado mediante un procedimiento posterior aprobado antes de probar login satisfactorio.
+El login password grant no necesita `/auth/callback`. La [recuperación de contraseña](PASSWORD_RECOVERY.md) ahora usa `/recuperar/confirmar` y requiere plantilla con token_hash en fragmento, allowlist HTTPS y AUTH_RECOVERY_SECRET de servidor. La aplicación todavía no implementa confirmación de alta por enlace, invitación ni MFA. La confirmación obligatoria implica que las personas autorizadas deberán tener su correo confirmado mediante un procedimiento posterior aprobado antes de probar login satisfactorio.
 
 ## Validación sin cambios de datos
 

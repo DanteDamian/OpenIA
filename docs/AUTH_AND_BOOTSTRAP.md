@@ -12,7 +12,7 @@ El layout y las páginas administrativas validan acceso; las APIs también reali
 
 Las escrituras, login y logout requieren Origin idéntico al origen de la solicitud. Las entradas JSON tienen límite de 8 KiB. Los errores de login son genéricos y no revelan si existe un correo. Los límites de intentos los aplica Supabase Auth; deben ajustarse en el proyecto al preparar staging.
 
-`/api/auth/logout` cierra la sesión actual y borra cookies. Los JWT ya emitidos tienen la vida útil establecida por Auth; no se promete revocación inmediata de todos los bearer tokens. MFA, recuperación de contraseña, invitaciones y gestión visual de membresías quedan fuera de este incremento.
+`/api/auth/logout` cierra la sesión actual y borra cookies. Los JWT ya emitidos tienen la vida útil establecida por Auth; no se promete revocación inmediata de todos los bearer tokens. MFA, invitaciones y gestión visual de membresías quedan fuera de este incremento. La [recuperación de contraseña](PASSWORD_RECOVERY.md) incluye solicitud de correo, verificación OTP, autorización cifrada y cambio de contraseña; su activación en Preview requiere los ajustes de entorno/plantilla documentados.
 
 ## Procedimiento inicial de AIGENTERRA
 

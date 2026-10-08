@@ -265,12 +265,22 @@ try {
     grant select, references, trigger on auth.users to postgres;
     grant anon, authenticated, service_role to postgres;`);
   databaseOperator = "postgres";
-  check(sql("select not rolsuper and rolbypassrls from pg_roles where rolname='postgres'") === "t",
-    "Migration operator is not a superuser");
-  const preflight = readFileSync("supabase/checks/staging-preflight.sql", "utf8");
+  check(
+    sql(
+      "select not rolsuper and rolbypassrls from pg_roles where rolname='postgres'",
+    ) === "t",
+    "Migration operator is not a superuser",
+  );
+  const preflight = readFileSync(
+    "supabase/checks/staging-preflight.sql",
+    "utf8",
+  );
   sql(preflight);
   assertions++;
-  sqlDenied(`set role authenticated; ${preflight}`, "reviewed postgres migration operator");
+  sqlDenied(
+    `set role authenticated; ${preflight}`,
+    "reviewed postgres migration operator",
+  );
   for (const migration of readdirSync("supabase/migrations")
     .filter((name) => name.endsWith(".sql"))
     .sort())
@@ -638,6 +648,8 @@ try {
         ...process.env,
         NEXT_PUBLIC_SUPABASE_URL: supabaseURL,
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon,
+        AUTH_SITE_URL: appURL,
+        AUTH_RECOVERY_SECRET: secret.slice(0, 64),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -787,6 +799,148 @@ try {
       .getSetCookie()
       .some((item) => item.includes("Max-Age=0")),
     "Logout clears session cookie",
+  );
+  // Solo identidades existentes del montaje local; no correos ni datos remotos.
+  await http("Recovery page is public", `${appURL}/recuperar`);
+  const resetKnown = await http(
+    "Recovery request known account",
+    `${appURL}/api/auth/recovery/request`,
+    {
+      method: "POST",
+      headers: { Origin: appURL },
+      body: {
+        email: users.admin.email,
+        redirectTo: "https://untrusted.invalid",
+      },
+    },
+  );
+  const resetUnknown = await http(
+    "Recovery request unknown account",
+    `${appURL}/api/auth/recovery/request`,
+    {
+      method: "POST",
+      headers: { Origin: appURL },
+      body: { email: "absent@example.invalid" },
+    },
+  );
+  check(
+    JSON.stringify(resetKnown.data) === JSON.stringify(resetUnknown.data),
+    "Recovery does not enumerate users",
+  );
+  await http(
+    "Recovery rejects CSRF",
+    `${appURL}/api/auth/recovery/request`,
+    { method: "POST", body: { email: users.admin.email } },
+    403,
+  );
+  await http(
+    "Normal session cannot reset without a recovery grant",
+    `${appURL}/api/auth/recovery/update`,
+    {
+      method: "POST",
+      headers: { Origin: appURL, Cookie: viewerCookie },
+      body: {
+        password: "not-used-local-password",
+        confirmation: "not-used-local-password",
+      },
+    },
+    401,
+  );
+  const link = await http(
+    "Generate local recovery link",
+    `${authURL}/admin/generate_link`,
+    {
+      token: service,
+      method: "POST",
+      body: { type: "recovery", email: users.admin.email },
+    },
+  );
+  const tokenHash = link.data.hashed_token;
+  check(
+    typeof tokenHash === "string",
+    "Local Auth generated recovery token hash",
+  );
+  secrets.push(tokenHash);
+  const verified = await http(
+    "Verify local recovery link",
+    `${appURL}/api/auth/recovery/verify`,
+    {
+      method: "POST",
+      headers: { Origin: appURL },
+      body: { tokenHash },
+    },
+  );
+  check(
+    !JSON.stringify(verified.data).includes("token"),
+    "Recovery response never returns session tokens",
+  );
+  const grantCookie = verified.response.headers
+    .getSetCookie()
+    .find(
+      (item) =>
+        item.startsWith("aigenterra-recovery=") && !item.includes("Max-Age=0"),
+    );
+  check(
+    grantCookie?.includes("HttpOnly") &&
+      grantCookie?.includes("SameSite=strict"),
+    "Recovery uses isolated HttpOnly Strict cookie",
+  );
+  const grantHeader = grantCookie.split(";")[0];
+  await http(
+    "Recovery link cannot be reused",
+    `${appURL}/api/auth/recovery/verify`,
+    {
+      method: "POST",
+      headers: { Origin: appURL },
+      body: { tokenHash },
+    },
+    400,
+  );
+  const resetPassword = randomBytes(32).toString("hex");
+  secrets.push(resetPassword);
+  const updated = await http(
+    "Recovery updates local password",
+    `${appURL}/api/auth/recovery/update`,
+    {
+      method: "POST",
+      headers: { Origin: appURL, Cookie: grantHeader },
+      body: { password: resetPassword, confirmation: resetPassword },
+    },
+  );
+  check(
+    updated.response.headers
+      .getSetCookie()
+      .some(
+        (item) =>
+          item.startsWith("aigenterra-recovery=") &&
+          (item.includes("Max-Age=0") ||
+            item.includes("Expires=Thu, 01 Jan 1970")),
+      ),
+    "Recovery clears grant after success",
+  );
+  await http(
+    "Consumed recovery grant cannot update again",
+    `${appURL}/api/auth/recovery/update`,
+    {
+      method: "POST",
+      headers: { Origin: appURL, Cookie: grantHeader },
+      body: { password: resetPassword, confirmation: resetPassword },
+    },
+    401,
+  );
+  await http(
+    "Old local password rejected",
+    `${authURL}/token?grant_type=password`,
+    { method: "POST", body: { email: users.admin.email, password } },
+    400,
+  );
+  await http(
+    "New local password works",
+    `${authURL}/token?grant_type=password`,
+    {
+      method: "POST",
+      body: { email: users.admin.email, password: resetPassword },
+    },
   );
   check(
     sql("select count(*) from public.quotes") === "0" &&

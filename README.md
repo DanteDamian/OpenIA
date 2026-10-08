@@ -53,6 +53,8 @@ En Vercel importar el repositorio con preset Next.js, Node.js 24, instalación `
 
 Consultar [conexión Auth en Vercel Preview](docs/VERCEL_PREVIEW_AUTH.md) para variables exactas, el problema de URL registrada como secreto proxy y las opciones Auth verificadas. El registro público está habilitado en el proyecto; esta entrega no modifica esa configuración.
 
+La opción «¿Olvidaste tu contraseña?» implementa recuperación con Supabase Auth, enlace verificado por servidor y autorización cifrada de diez minutos. Ver [PASSWORD_RECOVERY.md](docs/PASSWORD_RECOVERY.md) para activar el secreto de servidor, el origen HTTPS y la plantilla/allowlist en Preview. No se envían correos ni se modifican datos remotos al ejecutar las pruebas locales.
+
 ## Base de datos v1
 
 Migraciones versionadas en `supabase/migrations/`, sin aplicación remota automática. El modelo usa Supabase Auth y RLS por empresa. Ver [modelo de datos](docs/DATA_MODEL.md) y [procedimiento de despliegue](docs/DATABASE_DEPLOYMENT.md).

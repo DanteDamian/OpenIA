@@ -1,5 +1,6 @@
 import { LoginForm } from "@/features/auth/login-form";
 import { getSupabaseConfig } from "@/lib/supabase/config";
+import Link from "next/link";
 export const dynamic = "force-dynamic";
 export default function Login() {
   return (
@@ -27,6 +28,9 @@ export default function Login() {
         <p className="mt-6 text-xs leading-5 text-slate-500">
           Solicita tu cuenta autorizada al administrador de tu empresa.
         </p>
+        <Link href="/recuperar" className="mt-4 block text-sm underline">
+          ¿Olvidaste tu contraseña?
+        </Link>
       </section>
     </main>
   );
