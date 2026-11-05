@@ -42,7 +42,7 @@ describe("Navegación administrativa", () => {
     const section = screen.getByRole("region", {
       name: "Módulos administrativos",
     });
-    expect(within(section).getAllByRole("link")).toHaveLength(9);
+    expect(within(section).getAllByRole("link")).toHaveLength(10);
     expect(screen.getByText("No hay alertas detectadas en los registros disponibles.")).toBeInTheDocument();
   });
 });
