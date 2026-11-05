@@ -4,6 +4,7 @@ import { businessInput,cents,formatMoney,validDate } from "../src/lib/business/v
 import { analyze } from "../src/lib/business/analytics";
 const id="11111111-1111-4111-8111-111111111111";
 const valid:Record<string,Record<string,string|null>>={
+  convocatorias:{name:"Convocatoria SIG",issuer_name:"Entidad convocante",amount:"100000",topic:"Análisis geoespacial",priority:"high"},
   oportunidades:{client_id:id,title:"Local",stage:"new"},
   cotizaciones:{client_id:id,number:"Local",status:"draft",issued_on:"2026-10-08",subtotal:"10.10",discount_amount:"0",tax_amount:"0"},
   contratos:{client_id:id,number:"Local",title:"Local",status:"draft",amount:"0"},
