@@ -24,7 +24,7 @@ begin
     checks := checks + 3;
   end loop;
   if (select count(*) from pg_policy where polrelid in
-      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 45 then
+      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 48 then
     raise exception 'Unexpected policy count';
   end if;
   if exists (select 1 from pg_policy where polrelid in
