@@ -1,5 +1,6 @@
 export const modules = [
   {slug:"clientes",name:"Clientes",icon:"◎",description:"Clientes, identificación y contactos."},
+  {slug:"convocatorias",name:"Convocatorias",icon:"◈",description:"Convocatorias, entidades convocantes, valores y prioridades."},
   {slug:"oportunidades",name:"Oportunidades",icon:"◇",description:"Seguimiento comercial y cierre esperado."},
   {slug:"proyectos",name:"Proyectos",icon:"▧",description:"Presupuestos, relaciones y seguimiento de servicios."},
   {slug:"actividades",name:"Actividades y entregables",icon:"☑",description:"Actividades, hitos, entregables y responsables de proyectos."},
