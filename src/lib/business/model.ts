@@ -11,6 +11,13 @@ const dates: BusinessField[] = [{ name: "starts_on", label: "Inicio", type: "dat
 const status = (values: string[]): BusinessField => ({ name: "status", label: "Estado", required: true, options: values });
 const money = (name: string, label: string, required = false): BusinessField => ({ name, label, type: "money", required });
 export const resources: Record<string, Resource> = {
+  convocatorias: { table: "calls_for_proposals", title: "Convocatorias", label: "name", permission: "commercial", statusField: "priority", fields: [
+    { name: "name", label: "Nombre de la convocatoria", required: true, max: 200 },
+    { name: "issuer_name", label: "Empresa o entidad convocante", required: true, max: 200 },
+    money("amount", "Valor de la convocatoria (COP)", true),
+    { name: "topic", label: "Tema a desarrollar", required: true, type: "textarea", max: 2000 },
+    { name: "priority", label: "Priorización", required: true, options: ["high", "medium", "low"] },
+  ] },
   oportunidades: { table: "opportunities", title: "Oportunidades", label: "title", permission: "commercial", statusField: "stage", fields: [client, title,
     { name: "contact_id", label: "Contacto del cliente", relation: "contacts", type: "uuid" },
     { name: "stage", label: "Etapa", required: true, options: ["new","qualified","proposal","won","lost"] },
@@ -43,6 +50,7 @@ export const resources: Record<string, Resource> = {
     { name: "assignee_id", label: "Responsable (UUID de miembro autorizado)", type: "uuid" }, { name: "due_on", label: "Fecha límite", type: "date" }] },
 };
 export const translations: Record<string, string> = {
+  high: "Alta", medium: "Media", low: "Baja",
   new: "Nueva", qualified: "Calificada", proposal: "Propuesta", won: "Ganada", lost: "Perdida", draft: "Borrador", sent: "Enviada", accepted: "Aceptada", rejected: "Rechazada", expired: "Vencida",
   active: "Activo", completed: "Completado", terminated: "Terminado", planned: "Planeado", paused: "Pausado", cancelled: "Cancelado", recorded: "Registrado", void: "Anulado",
   income: "Ingreso", outgoing: "Salida", bank_transfer: "Transferencia", card: "Tarjeta", cash: "Efectivo", other: "Otro",
