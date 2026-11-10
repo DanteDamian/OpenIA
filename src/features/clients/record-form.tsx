@@ -3,7 +3,7 @@ import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 export type Field = {
   name: string; label: string; required?: boolean; max: number;
-  type?: "email" | "tel" | "textarea" | "date"; options?: { value: string; label: string }[];
+  type?: "email" | "tel" | "textarea" | "date" | "url"; options?: { value: string; label: string }[];
   initial?: string | null; autoComplete?: string; readOnly?: boolean;
 };
 type Props = {

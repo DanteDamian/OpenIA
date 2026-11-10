@@ -1,9 +1,9 @@
 export type BusinessField = {
-  name: string; label: string; type?: "text" | "date" | "money" | "textarea" | "uuid";
+  name: string; label: string; type?: "text" | "date" | "money" | "textarea" | "url" | "uuid";
   required?: boolean; max?: number; options?: readonly string[]; relation?: string;
 };
 export type Resource = { table: string; title: string; label: string; permission: "commercial" | "finance" | "admin";
-  fields: BusinessField[]; statusField?: string };
+  fields: BusinessField[]; statusField?: string; listFields?: readonly string[] };
 const client = { name: "client_id", label: "Cliente", required: true, relation: "clients", type: "uuid" } as const;
 const title = { name: "title", label: "Título", required: true, max: 200 } as const;
 const number = { name: "number", label: "Número / referencia", required: true, max: 60 } as const;
@@ -11,12 +11,17 @@ const dates: BusinessField[] = [{ name: "starts_on", label: "Inicio", type: "dat
 const status = (values: string[]): BusinessField => ({ name: "status", label: "Estado", required: true, options: values });
 const money = (name: string, label: string, required = false): BusinessField => ({ name, label, type: "money", required });
 export const resources: Record<string, Resource> = {
-  convocatorias: { table: "calls_for_proposals", title: "Convocatorias", label: "name", permission: "commercial", statusField: "priority", fields: [
+  convocatorias: { table: "calls_for_proposals", title: "Convocatorias", label: "name", permission: "commercial", statusField: "status",
+    listFields: ["name", "amount", "responsible", "status", "presentation_date"], fields: [
     { name: "name", label: "Nombre de la convocatoria", required: true, max: 200 },
     { name: "issuer_name", label: "Empresa o entidad convocante", required: true, max: 200 },
     money("amount", "Valor de la convocatoria (COP)", true),
     { name: "topic", label: "Tema a desarrollar", required: true, type: "textarea", max: 2000 },
     { name: "priority", label: "Priorización", required: true, options: ["high", "medium", "low"] },
+    { name: "link", label: "Link", type: "url", max: 2048 },
+    { name: "presentation_date", label: "Fecha de presentación", type: "date" },
+    { name: "status", label: "Estado", options: ["Sin iniciar", "En proceso", "terminado", "vencido"] },
+    { name: "responsible", label: "Responsable", options: ["Daniel Bula", "Martha Valbuena"] },
   ] },
   oportunidades: { table: "opportunities", title: "Oportunidades", label: "title", permission: "commercial", statusField: "stage", fields: [client, title,
     { name: "contact_id", label: "Contacto del cliente", relation: "contacts", type: "uuid" },
@@ -53,9 +58,15 @@ export const translations: Record<string, string> = {
   high: "Alta", medium: "Media", low: "Baja",
   new: "Nueva", qualified: "Calificada", proposal: "Propuesta", won: "Ganada", lost: "Perdida", draft: "Borrador", sent: "Enviada", accepted: "Aceptada", rejected: "Rechazada", expired: "Vencida",
   active: "Activo", completed: "Completado", terminated: "Terminado", planned: "Planeado", paused: "Pausado", cancelled: "Cancelado", recorded: "Registrado", void: "Anulado",
+  terminado: "Terminado", vencido: "Vencido",
   income: "Ingreso", outgoing: "Salida", bank_transfer: "Transferencia", card: "Tarjeta", cash: "Efectivo", other: "Otro",
   activity: "Actividad", deliverable: "Entregable", milestone: "Hito", pending: "Pendiente", in_progress: "En progreso", done: "Finalizado",
 };
+export function businessSort(params: Record<string, string | string[] | undefined>, allowed: readonly string[]) {
+  const requested = typeof params.sort === "string" ? params.sort : "";
+  const direction = params.direction === "desc" ? "desc" : "asc";
+  return { sort: allowed.includes(requested) ? requested : "", direction } as const;
+}
 export function canWrite(role: string, resource: Resource) {
   return role === "admin" || (resource.permission === "commercial" && role === "manager") || (resource.permission === "finance" && role === "accountant");
 }

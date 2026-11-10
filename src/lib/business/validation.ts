@@ -26,6 +26,9 @@ export function businessInput(resourceName: string, value: unknown) {
     if (field.options && !field.options.includes(text)) return null;
     if (field.type === "uuid" && !validUuid(text)) return null;
     if (field.type === "date") { try { if (!validDate(text)) return null; } catch { return null; } }
+    if (field.type === "url") {
+      try { if (!["http:", "https:"].includes(new URL(text).protocol)) return null; } catch { return null; }
+    }
     if (field.type === "money") {
       try { if (cents(text) < 0n || ((resourceName === "gastos" || resourceName === "tesoreria") && cents(text) === 0n)) return null; }
       catch { return null; }
