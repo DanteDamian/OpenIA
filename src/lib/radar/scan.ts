@@ -1,6 +1,7 @@
 import {topicPattern} from "@/lib/radar/sources";
-import {secopAdapterUrl,pncpSourceUrl,tedOfficialUrl} from "@/lib/radar/source-validation";
+import {secopAdapterUrl,pncpSourceUrl,tedOfficialUrl,sercopOfficialUrl} from "@/lib/radar/source-validation";
 import {fetchTed} from "@/lib/radar/ted";
+import {fetchSercop} from "@/lib/radar/sercop";
 import {fetchPncp} from "@/lib/radar/pncp";
 import {directSecopUrl,secopBudget,secopDuration,suggestedService} from "@/lib/radar/secop-details";
 import {NextResponse} from "next/server";
@@ -9,7 +10,7 @@ type SecopRow=Record<string,unknown>;
 const clean=(v:unknown,limit=1000)=>typeof v==="string"?v.trim().slice(0,limit):"";
 function day(v:unknown):string|null {const s=clean(v,32).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null;}
 export async function scanRadar(db:SupabaseClient,org:string) {
- const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).in("query_method",["socrata","pncp","ted"]).limit(5);
+ const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).in("query_method",["socrata","pncp","ted","sercop"]).limit(30);
  if(sourceError) return NextResponse.json({error:"Fuentes no disponibles"},{status:503});
  if(!sources?.length) return NextResponse.json({error:"Primero inicializa o habilita una fuente compatible."},{status:409});
  const {data:run,error:runError}=await db.from("radar_runs").insert({organization_id:org,status:"running"}).select("id").single();
@@ -18,9 +19,9 @@ export async function scanRadar(db:SupabaseClient,org:string) {
  const cutoff=new Date(Date.now()-30*86400_000).toISOString().slice(0,10);
  const today=new Date().toISOString().slice(0,10);
  for(const src of sources) {
-   if((src.query_method==="pncp" && src.official_url===pncpSourceUrl) || (src.query_method==="ted" && src.official_url===tedOfficialUrl)) {
+   if((src.query_method==="pncp" && src.official_url===pncpSourceUrl) || (src.query_method==="ted" && src.official_url===tedOfficialUrl) || (src.query_method==="sercop" && src.official_url===sercopOfficialUrl)) {
     try {
-      const items=src.query_method==="ted"?await fetchTed():await fetchPncp();
+      const items=src.query_method==="ted"?await fetchTed():src.query_method==="sercop"?await fetchSercop():await fetchPncp();
       for(const item of items) {
         const {data:existing,error:foundError}=await db.from("radar_opportunities")
           .select("id").eq("organization_id",org).eq("source_id",src.id).eq("official_id",item.official_id).maybeSingle();
