@@ -75,9 +75,9 @@ begin
   execute format('revoke all on public.%I from public, anon, authenticated',tbl);
   execute format('grant select,insert,update on public.%I to authenticated',tbl);
   execute format('grant all on public.%I to service_role',tbl);
-  execute format('create policy %I on public.%I for select to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=organization_id and m.user_id=(select auth.uid()) and m.is_active is distinct from false))',tbl||'_read',tbl);
-  execute format('create policy %I on public.%I for insert to authenticated with check (exists(select 1 from public.organization_memberships m where m.organization_id=organization_id and m.user_id=(select auth.uid()) and m.role_id in (''admin'',''manager'') and m.is_active is distinct from false))',tbl||'_insert',tbl);
-  execute format('create policy %I on public.%I for update to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=organization_id and m.user_id=(select auth.uid()) and m.role_id in (''admin'',''manager'') and m.is_active is distinct from false)) with check (exists(select 1 from public.organization_memberships m where m.organization_id=organization_id and m.user_id=(select auth.uid()) and m.role_id in (''admin'',''manager'') and m.is_active is distinct from false))',tbl||'_update',tbl);
+  execute format('create policy %I on public.%I for select to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=%I.organization_id and m.user_id=(select auth.uid()) and m.is_active is distinct from false))',tbl||'_read',tbl,tbl);
+  execute format('create policy %I on public.%I for insert to authenticated with check (exists(select 1 from public.organization_memberships m where m.organization_id=%I.organization_id and m.user_id=(select auth.uid()) and m.role_id in (''admin'',''manager'') and m.is_active is distinct from false))',tbl||'_insert',tbl,tbl);
+  execute format('create policy %I on public.%I for update to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=%I.organization_id and m.user_id=(select auth.uid()) and m.role_id in (''admin'',''manager'') and m.is_active is distinct from false)) with check (exists(select 1 from public.organization_memberships m where m.organization_id=%I.organization_id and m.user_id=(select auth.uid()) and m.role_id in (''admin'',''manager'') and m.is_active is distinct from false))',tbl||'_update',tbl,tbl,tbl);
  end loop;
 end $$;
 commit;
