@@ -32,8 +32,10 @@ export default async function RadarPage(){
    :<table className="w-full min-w-[1100px] text-left text-sm"><thead><tr>{["Convocatoria y objeto","País","Publicación","Vencimiento","Presupuesto base","Duración estimada","Servicio AIGENTERRA posible","Compatibilidad","Verificación","Fuente / proceso específico"].map(x=><th className="border-b p-2 align-top" key={x}>{x}</th>)}</tr></thead>
    <tbody>{entries.map(x=>{
      const link=directSecopUrl(x.official_url);
+     const brazilLink=/^https:\/\/pncp\.gov\.br\/app\/editais\/\d{14}\/\d{4}\/\d+$/.test(x.official_url)?x.official_url:null;
+     const europeanLink=/^https:\/\/ted\.europa\.eu\/en\/notice\/\d{6,8}-\d{4}\/html$/.test(x.official_url)?x.official_url:null;
      const rowRecord=(()=>{try {const u=new URL(x.official_url);return u.hostname==="www.datos.gov.co" && u.pathname==="/resource/p6dx-8zbt.json" && !!u.searchParams.get("id_del_proceso")?u.toString():null;}catch{return null;}})();
-     const budget=x.budget!==null && Number.isFinite(x.budget)?new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(x.budget):"No especificado";
+     const budget=x.budget!==null && Number.isFinite(x.budget)?new Intl.NumberFormat("es-CO",{style:"currency",currency:["COP","BRL","EUR"].includes(x.currency||"")?x.currency!:"COP",maximumFractionDigits:0}).format(x.budget):"No especificado";
      return <tr key={x.id} className="border-b">
        <td className="min-w-64 max-w-96 p-2 align-top"><span className="font-medium">{x.title}</span>
          <p className="text-xs text-slate-500">{x.issuer_name||"Entidad no identificada"}</p>
@@ -49,6 +51,8 @@ export default async function RadarPage(){
        <td className="p-2 align-top" title={x.match_reason||""}>{x.match_score??"Pendiente"}/100</td>
        <td className="p-2 align-top">{x.verification_status}</td>
        <td className="p-2 align-top"><p className="mb-1 text-xs text-slate-500">{catalog.find(source=>source.id===x.source_id)?.name||"Fuente oficial"}</p>{link?<a href={link} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">Ver proceso SECOP ↗</a>:
+          brazilLink?<a href={brazilLink} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">Ver licitación PNCP ↗</a>:
+          europeanLink?<a href={europeanLink} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">Ver aviso TED ↗</a>:
           rowRecord?<a href={rowRecord} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">Ver registro individual ↗</a>:
           <span className="text-slate-500">Sin enlace individual comprobado</span>}</td>
      </tr>;

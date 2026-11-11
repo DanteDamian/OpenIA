@@ -14,7 +14,7 @@ export async function POST(request:Request) {
  if(countError)return NextResponse.json({error:"No se pudo consultar el catálogo"},{status:503});
  let sourceCount=0;
  if(count===0) {
-  const sources=sourceSeeds.map(s=>({...s,organization_id:org,frequency:s.query_method==="socrata"?"daily":"manual"}));
+  const sources=sourceSeeds.map(s=>({...s,organization_id:org,frequency:s.query_method==="manual"?"manual":"daily"}));
   const {error:sourceError}=await a.supabase.from("radar_sources").upsert(sources,{onConflict:"organization_id,official_url",ignoreDuplicates:true});
   if(sourceError)return NextResponse.json({error:"No se pudieron preparar las fuentes"},{status:503});
   sourceCount=sources.length;
