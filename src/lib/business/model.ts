@@ -12,7 +12,7 @@ const status = (values: string[]): BusinessField => ({ name: "status", label: "E
 const money = (name: string, label: string, required = false): BusinessField => ({ name, label, type: "money", required });
 export const resources: Record<string, Resource> = {
   convocatorias: { table: "calls_for_proposals", title: "Convocatorias", label: "name", permission: "commercial", statusField: "status",
-    listFields: ["name", "amount", "responsible", "status", "presentation_date"], fields: [
+    listFields: ["name", "amount", "priority", "responsible", "status", "presentation_date"], fields: [
     { name: "name", label: "Nombre de la convocatoria", required: true, max: 200 },
     { name: "issuer_name", label: "Empresa o entidad convocante", required: true, max: 200 },
     money("amount", "Valor de la convocatoria (COP)", true),
@@ -22,6 +22,7 @@ export const resources: Record<string, Resource> = {
     { name: "presentation_date", label: "Fecha de presentación", type: "date" },
     { name: "status", label: "Estado", options: ["Sin iniciar", "En proceso", "terminado", "vencido"] },
     { name: "responsible", label: "Responsable", options: ["Daniel Bula", "Martha Valbuena"] },
+    { name: "observations", label: "Observaciones / Seguimiento", type: "textarea", max: 4000 },
   ] },
   oportunidades: { table: "opportunities", title: "Oportunidades", label: "title", permission: "commercial", statusField: "stage", fields: [client, title,
     { name: "contact_id", label: "Contacto del cliente", relation: "contacts", type: "uuid" },
