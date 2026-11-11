@@ -13,10 +13,10 @@ export function BusinessForm({ resource, choices, row, defaults = {} }: {
     const options = field.options ? field.options.map(value => ({value,label:translations[value] || value}))
       : field.relation ? (choices[field.relation] || []).filter(choice => !scoped || !choice.clientId || choice.clientId === clientId)
         .map(choice => ({value:choice.id,label:choice.label})) : undefined;
-    const optionalOptions = options ? [{value:"",label:field.required ? "Selecciona…" : "Sin vincular"},...options] : undefined;
+    const optionalOptions = options ? [{value:"",label:field.required ? "Selecciona…" : field.relation ? "Sin vincular" : "Sin registrar"},...options] : undefined;
     const dependent = field.relation && ["contacts","opportunities","quotes","contracts"].includes(field.relation);
     return { name:field.name,label:field.label,required:field.required,max:field.max || (field.type === "money" ? 19 : 200),
-      type:field.type === "textarea" || field.type === "date" ? field.type : undefined, options:optionalOptions,
+      type:field.type === "textarea" || field.type === "date" || field.type === "url" ? field.type : undefined, options:optionalOptions,
       initial:dependent && clientId !== (row?.client_id || defaults.client_id || "") ? null : row?.[field.name] ?? defaults[field.name] ?? null };
   });
   return <RecordForm title={row ? `Editar: ${definition.title}` : `Nuevo registro: ${definition.title}`}
