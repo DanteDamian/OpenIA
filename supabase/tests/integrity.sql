@@ -9,7 +9,7 @@ declare
   ok boolean;
 begin
   select count(*) into count_tables from pg_tables where schemaname = 'public';
-  if count_tables <> 17 then raise exception 'Expected 17 application tables, got %', count_tables; end if;
+  if count_tables <> 22 then raise exception 'Expected 17 application tables, got %', count_tables; end if;
   if (select count(*) from auth.users) <> 0 then raise exception 'Auth users must remain empty'; end if;
   if (select count(*) from public.roles) <> 4 then raise exception 'Role catalog missing'; end if;
 
