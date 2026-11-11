@@ -17,6 +17,16 @@ export const sourceSeeds = [
  {name:"World Bank Procurement",country:"Internacional",category:"Multilateral",official_url:"https://projects.worldbank.org/en/projects-operations/procurement",query_method:"manual",enabled:false},
  {name:"IDB Procurement",country:"Internacional",category:"Multilateral",official_url:"https://www.iadb.org/en/how-we-can-work-together/procurement",query_method:"manual",enabled:false},
  {name:"CAF Calls",country:"Internacional",category:"Multilateral",official_url:"https://www.caf.com/en/work-with-us/calls/",query_method:"manual",enabled:false},
+
+ {name:"PNCP Brasil — Contratações abertas",country:"Brasil",category:"Contratación",official_url:"https://pncp.gov.br/app/editais",query_method:"pncp",enabled:true},
+ {name:"TED — Licitaciones UE",country:"Unión Europea",category:"Contratación",official_url:"https://ted.europa.eu/es/",query_method:"ted",enabled:true},
+ {name:"Funding & Tenders — Unión Europea",country:"Unión Europea",category:"Innovación",official_url:"https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/home",query_method:"manual",enabled:false},
+ {name:"PLACSP — España",country:"España",category:"Contratación",official_url:"https://contrataciondelestado.es/",query_method:"manual",enabled:false},
+ {name:"Mercado Público — Chile",country:"Chile",category:"Contratación",official_url:"https://www.mercadopublico.cl/",query_method:"manual",enabled:false},
+ {name:"SEACE — Perú",country:"Perú",category:"Contratación",official_url:"https://www.gob.pe/osce",query_method:"manual",enabled:false},
+ {name:"ARCE — Uruguay",country:"Uruguay",category:"Contratación",official_url:"https://www.comprasestatales.gub.uy/",query_method:"manual",enabled:false},
+ {name:"COMPR.AR — Argentina",country:"Argentina",category:"Contratación",official_url:"https://comprar.gob.ar/",query_method:"manual",enabled:false},
+ {name:"SICOP — Costa Rica",country:"Costa Rica",category:"Contratación",official_url:"https://www.sicop.go.cr/",query_method:"manual",enabled:false},
 ] as const;
 export const aigenterraServices = [
  "GeoAI e inteligencia artificial geoespacial","Sistemas de información geográfica",
