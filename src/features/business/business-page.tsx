@@ -76,6 +76,7 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
     {id && <Link href={`/${resource}`} className="text-sm text-teal-800 underline">← Volver al listado</Link>}
     <p className="eyebrow mt-4">ESPACIO DE TRABAJO</p><h1 className="mt-2 text-3xl font-semibold">{id ? String(row?.[definition.label] || definition.title) : definition.title}</h1>
     <p className="mt-3 text-sm text-slate-500">Información real de tu organización · COP</p>
+    {resource==="convocatorias" && !id && <Link href="/convocatorias/radar" className="mt-3 inline-flex rounded-lg border border-teal-700 px-4 py-2 font-semibold text-teal-800">Abrir Radar GeoIA →</Link>}
     {error && <p role="alert" className="card mt-6 p-6 text-red-700">No fue posible consultar los registros.</p>}
     {choiceError && <p role="alert" className="card mt-6 p-6 text-red-700">No fue posible cargar las relaciones. Recarga antes de guardar.</p>}
     {canEdit && <BusinessForm resource={resource} choices={choices} row={id ? row : undefined} defaults={projectFilter ? {project_id:projectFilter} : {}} />}
