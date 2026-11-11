@@ -40,7 +40,7 @@ export async function fetchPncp(now:Date=new Date()):Promise<ExternalCandidate[]
  const today=now.toISOString().slice(0,10);
  const candidates:ExternalCandidate[]=[];
  // Official API requires one modality per request. Bound both the modalities and response size.
- for(const modality of [4,6,8]) {
+ const pages=await Promise.all([4,6,8].map(async modality => {
   const url=new URL(pncpApiEndpoint);
   url.searchParams.set("dataFinal",dateFinal);
   url.searchParams.set("codigoModalidadeContratacao",String(modality));
@@ -51,10 +51,11 @@ export async function fetchPncp(now:Date=new Date()):Promise<ExternalCandidate[]
   if(!payload||typeof payload!=="object"||Array.isArray(payload))throw Error("Formato PNCP inesperado");
   const records=(payload as {data?:unknown}).data;
   if(!Array.isArray(records))throw Error("Resultados PNCP inválidos");
-  for(const row of records.slice(0,20)){
-   const item=pncpCandidate(row,today);
-   if(item&&!candidates.some(v=>v.official_id===item.official_id))candidates.push(item);
-  }
+  return records.slice(0,20);
+ }));
+ for(const page of pages)for(const row of page){
+  const item=pncpCandidate(row,today);
+  if(item&&!candidates.some(v=>v.official_id===item.official_id))candidates.push(item);
  }
- return candidates.slice(0,30);
+ return candidates.slice(0,20);
 }
