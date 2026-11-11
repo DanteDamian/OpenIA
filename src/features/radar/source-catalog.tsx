@@ -1,6 +1,6 @@
 "use client";
 import {useRouter} from "next/navigation";
-import {useState} from "react";
+import {useState, type FormEvent} from "react";
 type Method="manual"|"socrata";
 type Frequency="daily"|"weekly"|"manual";
 type Source={id:string;name:string;country:string;category:string;official_url:string;query_method:Method;frequency:Frequency;enabled:boolean;technical_status:string;last_checked_at:string|null;last_result:string|null};
@@ -17,7 +17,7 @@ export function SourceCatalog({sources,canEdit}:{sources:Source[];canEdit:boolea
   setForm(row?{name:row.name,country:row.country,category:row.category,official_url:row.official_url,query_method:row.query_method,frequency:row.frequency,enabled:row.enabled}:empty);
   setOpen(true);setMessage("");
  }
- async function save(e:React.FormEvent<HTMLFormElement>) {
+ async function save(e:FormEvent<HTMLFormElement>) {
   e.preventDefault();if(busy)return;
   setBusy(true);setMessage("");
   try {
@@ -29,7 +29,7 @@ export function SourceCatalog({sources,canEdit}:{sources:Source[];canEdit:boolea
   }catch(e){setMessage(e instanceof Error?e.message:"Error al guardar");}
   finally{setBusy(false);}
  }
- const set=<K extends keyof Form>(key:K,value:Form[K])=>setForm(previous=>({...previous,[key]:value}));
+ const setField=<K extends keyof Form,>(key:K,value:Form[K])=>setForm(previous=>({...previous,[key]:value}));
  return <div className="space-y-4">
   <div className="flex flex-wrap items-center justify-between gap-3">
    <p className="text-sm text-slate-600">{sources.length} fuentes registradas. Las fuentes manuales se conservan en el catálogo, pero aún no cuentan con rastreo automático.</p>
@@ -39,17 +39,17 @@ export function SourceCatalog({sources,canEdit}:{sources:Source[];canEdit:boolea
   {open&&canEdit&&<form onSubmit={save} className="card space-y-4 p-5">
     <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">{editing?"Editar fuente":"Registrar fuente oficial"}</h2><button type="button" onClick={()=>setOpen(false)} className="underline">Cerrar</button></div>
     <div className="grid gap-4 md:grid-cols-2">
-     <label className="text-sm">Nombre<input className="mt-1 w-full rounded border p-2" required maxLength={200} value={form.name} onChange={e=>set("name",e.target.value)}/></label>
-     <label className="text-sm">País<input className="mt-1 w-full rounded border p-2" required maxLength={100} value={form.country} onChange={e=>set("country",e.target.value)}/></label>
-     <label className="text-sm">Categoría<input className="mt-1 w-full rounded border p-2" required maxLength={120} value={form.category} onChange={e=>set("category",e.target.value)}/></label>
-     <label className="text-sm">Frecuencia deseada<select className="mt-1 w-full rounded border p-2" value={form.frequency} onChange={e=>set("frequency",e.target.value as Frequency)}>
+     <label className="text-sm">Nombre<input className="mt-1 w-full rounded border p-2" required maxLength={200} value={form.name} onChange={e=>setField("name",e.target.value)}/></label>
+     <label className="text-sm">País<input className="mt-1 w-full rounded border p-2" required maxLength={100} value={form.country} onChange={e=>setField("country",e.target.value)}/></label>
+     <label className="text-sm">Categoría<input className="mt-1 w-full rounded border p-2" required maxLength={120} value={form.category} onChange={e=>setField("category",e.target.value)}/></label>
+     <label className="text-sm">Frecuencia deseada<select className="mt-1 w-full rounded border p-2" value={form.frequency} onChange={e=>setField("frequency",e.target.value as Frequency)}>
       <option value="manual">Manual</option><option value="daily">Diaria</option><option value="weekly">Semanal</option>
      </select></label>
-     <label className="text-sm md:col-span-2">URL oficial HTTPS<input className="mt-1 w-full rounded border p-2" required type="url" maxLength={2048} value={form.official_url} onChange={e=>set("official_url",e.target.value)} placeholder="https://..." /></label>
-     <label className="text-sm">Método de consulta<select className="mt-1 w-full rounded border p-2" value={form.query_method} onChange={e=>set("query_method",e.target.value as Method)}>
+     <label className="text-sm md:col-span-2">URL oficial HTTPS<input className="mt-1 w-full rounded border p-2" required type="url" maxLength={2048} value={form.official_url} onChange={e=>setField("official_url",e.target.value)} placeholder="https://..." /></label>
+     <label className="text-sm">Método de consulta<select className="mt-1 w-full rounded border p-2" value={form.query_method} onChange={e=>setField("query_method",e.target.value as Method)}>
       <option value="manual">Manual / sin adaptador</option><option value="socrata">SECOP II — adaptador Socrata</option>
      </select></label>
-     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={e=>set("enabled",e.target.checked)}/> Fuente habilitada</label>
+     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={e=>setField("enabled",e.target.checked)}/> Fuente habilitada</label>
     </div>
     <p className="text-xs text-slate-600">El adaptador Socrata solo admite la URL oficial del conjunto SECOP II: <code className="break-all">{secopOfficialUrl}</code>. La frecuencia es una preferencia de catálogo; no crea por sí sola una ejecución programada.</p>
     <button className="button-primary disabled:opacity-50" disabled={busy} type="submit">{busy?"Guardando…":editing?"Guardar cambios":"Crear fuente"}</button>
