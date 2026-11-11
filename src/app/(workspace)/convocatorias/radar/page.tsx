@@ -33,7 +33,7 @@ export default async function RadarPage(){
    <tbody>{entries.map(x=>{
      const link=directSecopUrl(x.official_url);
      const brazilLink=/^https:\/\/pncp\.gov\.br\/app\/editais\/\d{14}\/\d{4}\/\d+$/.test(x.official_url)?x.official_url:null;
-     const europeanLink=/^https:\/\/ted\.europa\.eu\/en\/notice\/\d{6}-\d{4}\/html$/.test(x.official_url)?x.official_url:null;
+     const europeanLink=/^https:\/\/ted\.europa\.eu\/en\/notice\/\d{6,8}-\d{4}\/html$/.test(x.official_url)?x.official_url:null;
      const rowRecord=(()=>{try {const u=new URL(x.official_url);return u.hostname==="www.datos.gov.co" && u.pathname==="/resource/p6dx-8zbt.json" && !!u.searchParams.get("id_del_proceso")?u.toString():null;}catch{return null;}})();
      const budget=x.budget!==null && Number.isFinite(x.budget)?new Intl.NumberFormat("es-CO",{style:"currency",currency:["COP","BRL","EUR"].includes(x.currency||"")?x.currency!:"COP",maximumFractionDigits:0}).format(x.budget):"No especificado";
      return <tr key={x.id} className="border-b">
