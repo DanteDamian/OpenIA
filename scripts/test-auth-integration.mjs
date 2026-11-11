@@ -245,7 +245,7 @@ try {
       GOTRUE_SMTP_PORT: String(smtp.port),
       GOTRUE_SMTP_ADMIN_EMAIL: "noreply@example.invalid",
       GOTRUE_SMTP_SENDER_NAME: "Local fixtures",
-      GOTRUE_SMTP_MAX_FREQUENCY: "0s",
+      GOTRUE_SMTP_MAX_FREQUENCY: "1s",
       GOTRUE_RATE_LIMIT_EMAIL_SENT: "100",
       GOTRUE_JWT_SECRET: secret,
       GOTRUE_JWT_ADMIN_ROLES: "service_role",
@@ -940,6 +940,8 @@ try {
   const existingInviteId=sql(`select id from private.organization_invitations where email='${users.outsider.email}'`);
   await http("Immediate resend is rate limited",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"POST",headers:{Origin:appURL,Cookie:cookie}},429);
   sql(`update private.organization_invitations set updated_at=now()-interval '61 seconds' where id='${existingInviteId}'`);
+  // Reset the real GoTrue OTP cooldown as well (only in disposable local test DB).
+  sql(`update auth.users set recovery_sent_at=now()-interval '61 seconds' where email='${users.outsider.email}'`);
   await http("Admin can resend from app",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"POST",headers:{Origin:appURL,Cookie:cookie}});
   await http("Admin can cancel from app",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"DELETE",headers:{Origin:appURL,Cookie:cookie}});
   await http("Cancelled invitation cannot grant membership",rpc("accept_organization_invitation"),{token:users.outsider.token,method:"POST",body:{invitation_id:existingInviteId}},403);
