@@ -9,12 +9,14 @@ import { listOptions, literalSearch, type ListParams } from "@/lib/clients/model
 import { Pagination } from "@/features/clients/pagination";
 import { BusinessForm } from "./business-form";
 import { cents, formatMoney } from "@/lib/business/validation";
+import { bogotaToday, deadlineAlert } from "@/lib/business/deadline-alert";
 export async function BusinessPage({resource,params={},id}: {resource:string;params?:ListParams;id?:string}) {
   const definition=Object.hasOwn(resources,resource) ? resources[resource] : null;
   if(!definition) notFound();
   const access=await requireAccess();
   if(id && !validUuid(id)) notFound();
   const options=listOptions(params);
+  const today=resource==="convocatorias" ? bogotaToday() : "";
   const listFields=definition.listFields || [definition.label,definition.statusField || "status"];
   const sorting=businessSort(params,listFields);
   const allowedStatuses=definition.fields.find(field=>field.name===definition.statusField)?.options || [];
@@ -43,6 +45,24 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
     if(field?.relation) return choices[field.relation]?.find(choice=>choice.id===value)?.label || "Relación no disponible";
     if(field?.type === "money" || key === "total") { try{return formatMoney(cents(value));}catch{return "Importe inválido";} }
     return translations[value] || value;
+  };
+  const listValue=(field:string,item:BusinessRow) => {
+    const value=item[field];
+    if(resource==="convocatorias" && field==="link")
+      return value && /^https?:\/\//i.test(value)
+        ? <a href={value} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">Abrir enlace <span aria-hidden="true">↗</span></a>
+        : <span className="text-slate-500">Sin enlace</span>;
+    if(resource==="convocatorias" && field==="observations")
+      return !value ? <span className="text-slate-500">Sin registrar</span>
+        : value.length > 140
+          ? <details className="max-w-xs"><summary className="cursor-pointer whitespace-pre-wrap break-words">{value.slice(0,140)}… Ver más</summary><p className="mt-2 whitespace-pre-wrap break-words">{value}</p></details>
+          : <span className="block max-w-xs whitespace-pre-wrap break-words">{value}</span>;
+    if(resource==="convocatorias" && field==="presentation_date") {
+      const alert=deadlineAlert(value,item.status,today);
+      const tones={red:"bg-red-100 text-red-800",yellow:"bg-amber-100 text-amber-900",green:"bg-emerald-100 text-emerald-800",neutral:"bg-slate-100 text-slate-600"};
+      return <div className="flex min-w-32 flex-col items-start gap-1"><span>{display(field,value)}</span><span className={`rounded-full px-2 py-1 text-xs font-semibold ${tones[alert.tone]}`}>{alert.label}</span></div>;
+    }
+    return display(field,value);
   };
   const listHref=(field:string) => {
     const nextDirection=sorting.sort === field && sorting.direction === "asc" ? "desc" : "asc";
@@ -75,7 +95,7 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
           return <th key={fieldName} scope="col" aria-sort={active ? (sorting.direction === "asc" ? "ascending" : "descending") : "none"} className="p-3">
             <Link href={listHref(fieldName)} className="inline-flex items-center gap-1 underline decoration-slate-300 underline-offset-4">{field?.label || fieldName}<span aria-hidden="true">{active ? (sorting.direction === "asc" ? "↑" : "↓") : "↕"}</span></Link>
           </th>;
-        })}<th scope="col" className="p-3">Consulta</th></tr></thead><tbody>{rows.map(item=><tr key={item.id} className="border-t">{listFields.map(fieldName=><td key={fieldName} className="p-3">{display(fieldName,item[fieldName])}</td>)}<td className="p-3"><Link href={`/${resource}/${item.id}`} className="text-teal-800 underline">Ver detalle</Link></td></tr>)}</tbody></table>}
+        })}<th scope="col" className="p-3">Consulta</th></tr></thead><tbody>{rows.map(item=><tr key={item.id} className="border-t">{listFields.map(fieldName=><td key={fieldName} className="p-3 align-top">{listValue(fieldName,item)}</td>)}<td className="p-3"><Link href={`/${resource}/${item.id}`} className="text-teal-800 underline">Ver detalle</Link></td></tr>)}</tbody></table>}
       {!id && <Pagination base={`/${resource}`} options={{...options,status:filterStatus}} total={count || 0} extra={{...(projectFilter ? {project_id:projectFilter} : {}),...(sorting.sort ? {sort:sorting.sort,direction:sorting.direction} : {})}} />}
     </section>}
     {id && resource === "proyectos" && <section className="card mt-6 p-6"><h2 className="font-semibold">Seguimiento del proyecto</h2><Link href={`/actividades?project_id=${id}`} className="mt-3 inline-block text-teal-800 underline">Actividades, entregables e hitos</Link><p className="mt-2 text-sm text-slate-500">Presupuesto registrado: {display("budget",row.budget)}</p>{projectSummary ? <p className="mt-2 text-sm">Gastos registrados: {projectSummary.expenses} · Avance de actividades: {projectSummary.completedItems} de {projectSummary.totalItems} finalizadas.</p> : <p role="alert" className="mt-2 text-sm text-red-700">No fue posible calcular los indicadores del proyecto.</p>}</section>}
