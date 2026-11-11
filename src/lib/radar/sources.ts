@@ -26,4 +26,4 @@ export const aigenterraServices = [
  "Integración y procesamiento de datos geoespaciales"
 ] as const;
 // Matching is conservative: it detects relevant topics, never asserts eligibility.
-export const topicPattern = /geoespacial|geográfica|información geográfica|\bgis\b|\bsig\b|cartograf|sat[eé]lit|teledete|remote sensing|im[aá]gen|ambiental|cobertura|deforest|inteligencia artificial|machine learning|geoai|\bsaas\b|tablero|dashboard|riesgo|vulnerabil|an[aá]lisis espacial/i;
+export const topicPattern = /geoespacial|geospatial|geográfica|geographic information|información geográfica|\bgis\b|\bsig\b|cartograf|sat[eé]lit|satellite|teledete|remote sensing|im[aá]gen|ambiental|cobertura|deforest|inteligencia artificial|machine learning|geoai|\bsaas\b|tablero|dashboard|riesgo|vulnerabil|an[aá]lisis espacial/i;
