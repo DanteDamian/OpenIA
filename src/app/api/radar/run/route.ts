@@ -2,6 +2,7 @@ import { getAccess } from "@/lib/auth/session";
 import { sameOrigin } from "@/lib/auth/validation";
 import { topicPattern } from "@/lib/radar/sources";
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 export const maxDuration=60;
 type SecopRow = Record<string,unknown>;
 const clean=(v:unknown,limit=1000)=>typeof v==="string"?v.trim().slice(0,limit):"";
@@ -11,7 +12,9 @@ export async function POST(request:Request) {
  const a=await getAccess();
  if(a.status!=="authorized" || !["admin","manager"].includes(a.role))
    return NextResponse.json({error:"No autorizado"},{status:403});
- const org=a.organizationId, db=a.supabase;
+ return scanRadar(a.supabase,a.organizationId);
+}
+export async function scanRadar(db:SupabaseClient,org:string) {
  const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).eq("query_method","socrata").limit(3);
  if(sourceError) return NextResponse.json({error:"Fuentes no disponibles"},{status:503});
  if(!sources?.length) return NextResponse.json({error:"Primero inicializa o habilita una fuente compatible."},{status:409});
@@ -69,4 +72,5 @@ export async function POST(request:Request) {
  const finalStatus=errors.length?"failed":"completed";
  await db.from("radar_runs").update({status:finalStatus,finished_at:new Date().toISOString(),checked_sources:checked,discovered,verified:0,error_summary:errors.join("; ").slice(0,1200)||null}).eq("organization_id",org).eq("id",run.id);
  return NextResponse.json({run_id:run.id,status:finalStatus,checked,discovered,verified:0,errors});
+
 }
