@@ -1,5 +1,6 @@
 import {topicPattern} from "@/lib/radar/sources";
-import {secopAdapterUrl,pncpSourceUrl} from "@/lib/radar/source-validation";
+import {secopAdapterUrl,pncpSourceUrl,tedOfficialUrl} from "@/lib/radar/source-validation";
+import {fetchTed} from "@/lib/radar/ted";
 import {fetchPncp} from "@/lib/radar/pncp";
 import {directSecopUrl,secopBudget,secopDuration,suggestedService} from "@/lib/radar/secop-details";
 import {NextResponse} from "next/server";
@@ -8,7 +9,7 @@ type SecopRow=Record<string,unknown>;
 const clean=(v:unknown,limit=1000)=>typeof v==="string"?v.trim().slice(0,limit):"";
 function day(v:unknown):string|null {const s=clean(v,32).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null;}
 export async function scanRadar(db:SupabaseClient,org:string) {
- const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).in("query_method",["socrata","pncp"]).limit(4);
+ const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).in("query_method",["socrata","pncp","ted"]).limit(5);
  if(sourceError) return NextResponse.json({error:"Fuentes no disponibles"},{status:503});
  if(!sources?.length) return NextResponse.json({error:"Primero inicializa o habilita una fuente compatible."},{status:409});
  const {data:run,error:runError}=await db.from("radar_runs").insert({organization_id:org,status:"running"}).select("id").single();
@@ -17,33 +18,33 @@ export async function scanRadar(db:SupabaseClient,org:string) {
  const cutoff=new Date(Date.now()-30*86400_000).toISOString().slice(0,10);
  const today=new Date().toISOString().slice(0,10);
  for(const src of sources) {
-   if(src.query_method==="pncp" && src.official_url===pncpSourceUrl) {
+   if((src.query_method==="pncp" && src.official_url===pncpSourceUrl) || (src.query_method==="ted" && src.official_url===tedOfficialUrl)) {
     try {
-      const items=await fetchPncp();
+      const items=src.query_method==="ted"?await fetchTed():await fetchPncp();
       for(const item of items) {
         const {data:existing,error:foundError}=await db.from("radar_opportunities")
           .select("id").eq("organization_id",org).eq("source_id",src.id).eq("official_id",item.official_id).maybeSingle();
-        if(foundError){errors.push("PNCP: error en deduplicación");continue;}
+        if(foundError){errors.push("Fuente externa: error en deduplicación");continue;}
         if(existing)continue; // Preserve all human changes and avoid overwriting.
         const record={...item,organization_id:org,source_id:src.id,verification_status:"Pendiente de verificación",
           priority:"low",last_checked_at:new Date().toISOString()};
         const {data:created,error:saveError}=await db.from("radar_opportunities")
           .upsert(record,{onConflict:"organization_id,normalized_url",ignoreDuplicates:true}).select("id");
-        if(saveError){errors.push("PNCP: error al guardar oportunidad");continue;}
+        if(saveError){errors.push("Fuente externa: error al guardar oportunidad");continue;}
         if(created?.length){
           discovered++;
           await db.from("radar_evidence").insert({organization_id:org,opportunity_id:created[0].id,
            official_url:item.official_url,excerpt:item.description.slice(0,1200),
-           result:"Registro oficial PNCP: apertura y elegibilidad de AIGENTERRA pendientes de validar."});
+           result:"Registro oficial de contratación: apertura y elegibilidad pendientes de validar."});
         }
       }
       checked++;
       await db.from("radar_sources").update({technical_status:"ok",last_checked_at:new Date().toISOString(),
-       last_result:`${items.length} coincidencias temáticas PNCP examinadas`}).eq("organization_id",org).eq("id",src.id);
+       last_result:`${items.length} coincidencias temáticas examinadas`}).eq("organization_id",org).eq("id",src.id);
     }catch(e){
-      errors.push("PNCP: "+(e instanceof Error?e.message:"Error de consulta"));
+      errors.push(src.name+": "+(e instanceof Error?e.message:"Error de consulta"));
       await db.from("radar_sources").update({technical_status:"error",last_checked_at:new Date().toISOString(),
-       last_result:"Consulta PNCP fallida"}).eq("organization_id",org).eq("id",src.id);
+       last_result:"Consulta oficial fallida"}).eq("organization_id",org).eq("id",src.id);
     }
     continue;
    }
