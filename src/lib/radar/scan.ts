@@ -1,4 +1,5 @@
 import {topicPattern} from "@/lib/radar/sources";
+import {secopAdapterUrl} from "@/lib/radar/source-validation";
 import {directSecopUrl,secopBudget,secopDuration,suggestedService} from "@/lib/radar/secop-details";
 import {NextResponse} from "next/server";
 import type {SupabaseClient} from "@supabase/supabase-js";
@@ -6,7 +7,7 @@ type SecopRow=Record<string,unknown>;
 const clean=(v:unknown,limit=1000)=>typeof v==="string"?v.trim().slice(0,limit):"";
 function day(v:unknown):string|null {const s=clean(v,32).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null;}
 export async function scanRadar(db:SupabaseClient,org:string) {
- const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).eq("query_method","socrata").limit(3);
+ const {data:sources,error:sourceError}=await db.from("radar_sources").select("*").eq("organization_id",org).eq("enabled",true).eq("query_method","socrata").eq("official_url",secopAdapterUrl).limit(1);
  if(sourceError) return NextResponse.json({error:"Fuentes no disponibles"},{status:503});
  if(!sources?.length) return NextResponse.json({error:"Primero inicializa o habilita una fuente compatible."},{status:409});
  const {data:run,error:runError}=await db.from("radar_runs").insert({organization_id:org,status:"running"}).select("id").single();

@@ -20,7 +20,7 @@ export default async function RadarPage(){
  return <main className="space-y-6">
   <p className="eyebrow">CONVOCATORIAS / INTELIGENCIA COMERCIAL</p>
   <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-semibold">Radar GeoIA</h1><p className="mt-2 text-slate-600">Descubrimiento de fuentes oficiales. La coincidencia temática no certifica elegibilidad ni apertura.</p></div><Link href="/convocatorias" className="text-teal-800 underline">Mis convocatorias</Link></div>
-  <RadarActions canRun={["admin","manager"].includes(a.role)}/>
+  <div className="flex flex-wrap items-center gap-4"><RadarActions canRun={["admin","manager"].includes(a.role)}/><Link href="/convocatorias/radar/fuentes" className="text-teal-800 underline">Administrar fuentes ↗</Link></div>
   {error&&<p role="alert" className="card p-4 text-red-800">El Radar requiere su migración de base de datos o un permiso válido.</p>}
   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
   {([{label:"Candidatos detectados",value:entries.length},{label:"Abiertas verificadas",value:verified},{label:"Fuentes registradas",value:catalog.length},{label:"Fuentes con error",value:catalog.filter(s=>s.technical_status==="error").length}]).map(x=><div className="card p-4" key={x.label}><div className="text-sm text-slate-600">{x.label}</div><div className="mt-2 text-2xl font-semibold">{x.value}</div></div>)}
