@@ -22,7 +22,9 @@ Configurar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e
 
 El esquema, RLS por empresa, autenticación, renovación de sesión y autorización se verificaron localmente. Las tres migraciones ya se aplicaron con autorización a `wafzklaioidpqqmbglff` y se verificó el modelo en PostgreSQL 17.11 gestionado. No se crearon usuarios ni datos de negocio. Ver [resultados y pendientes](docs/SUPABASE_DEPLOYMENT_REPORT.md): el token carece de `auth_config_read` y la aceptación con sesiones reales sigue pendiente antes de cargar información empresarial.
 
-OpenAI y Alegra no están conectados y no requieren claves en esta etapa.
+La redacción asistida por OpenAI sigue desactivada por defecto y solo se habilita explícitamente con variables de servidor. Alegra no está conectada.
+
+El módulo adicional [CRM Propuestas](docs/CRM_PROPUESTAS.md) genera propuestas corporativas DOCX/PDF vinculadas a Clientes y Convocatorias, con presupuesto determinista, aprobación, versiones y almacenamiento privado por organización.
 
 ## Estructura
 

@@ -9,7 +9,7 @@ declare
   ok boolean;
 begin
   select count(*) into count_tables from pg_tables where schemaname = 'public';
-  if count_tables <> 17 then raise exception 'Expected 17 application tables, got %', count_tables; end if;
+  if count_tables <> 24 then raise exception 'Expected 24 application tables, got %', count_tables; end if;
   if (select count(*) from auth.users) <> 0 then raise exception 'Auth users must remain empty'; end if;
   if (select count(*) from public.roles) <> 4 then raise exception 'Role catalog missing'; end if;
 
@@ -31,7 +31,7 @@ begin
   -- Toda relación entre registros empresariales incluye organization_id en ambos lados.
   for item in select k.*, c.relname from pg_constraint k join pg_class c on c.oid=k.conrelid
     where k.contype='f' and c.relnamespace='public'::regnamespace
-      and c.relname in ('clients','contacts','opportunities','quotes','contracts','projects','invoices','payments','expenses')
+      and c.relname in ('clients','contacts','opportunities','quotes','contracts','projects','invoices','payments','expenses','proposals','proposal_sections','proposal_items','proposal_versions','proposal_approvals','proposal_documents')
       and k.confrelid not in ('public.profiles'::regclass,'public.organizations'::regclass) loop
     if not exists (select 1 from pg_attribute where attrelid=item.conrelid
       and attname='organization_id' and attnum=any(item.conkey))
@@ -102,14 +102,17 @@ begin
 
   if (select count(*) from pg_trigger where tgrelid='auth.users'::regclass
      and tgname='on_auth_user_created' and not tgisinternal) <> 1 then raise exception 'Missing Auth profile trigger'; end if;
-  if (select count(*) from pg_trigger where tgname like '%_stamp' and not tgisinternal) <> 13 then
+  if (select count(*) from pg_trigger where tgname like '%_stamp' and not tgisinternal) <> 17 then
     raise exception 'Missing immutable identity/audit triggers';
   end if;
   for expected in select unnest(array['organizations','profiles','organization_memberships','clients','contacts',
-    'opportunities','quotes','contracts','projects','invoices','payments','expenses']) loop
+    'opportunities','quotes','contracts','projects','invoices','payments','expenses','proposals','proposal_sections','proposal_items','proposal_versions','proposal_approvals','proposal_documents']) loop
     execute format('select count(*) = 0 from public.%I', expected) into ok;
     if not ok then raise exception 'Unexpected user/business fixture on %',expected; end if;
   end loop;
+  if (select count(*) from public.proposal_templates where organization_id is null and is_corporate) <> 1 then
+    raise exception 'Corporate proposal template missing';
+  end if;
   raise notice 'Integrity: % assertions passed; no users or financial rows created', checks + 18;
 end $$;
 rollback;

@@ -24,7 +24,7 @@ begin
     checks := checks + 3;
   end loop;
   if (select count(*) from pg_policy where polrelid in
-      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 48 then
+      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 66 then
     raise exception 'Unexpected policy count';
   end if;
   if exists (select 1 from pg_policy where polrelid in
@@ -88,15 +88,15 @@ begin
     or has_table_privilege('service_role','private.organization_bootstrap_audit','SELECT,INSERT,UPDATE,DELETE') then
     raise exception 'Bootstrap approval audit exposed';
   end if;
-  -- Matriz completa: 4 roles x 11 recursos x 4 operaciones, sin usuarios de prueba.
+  -- Matriz completa: 4 roles x 12 recursos x 4 operaciones, sin usuarios de prueba.
   foreach member_role in array array['admin','manager','accountant','viewer'] loop
     foreach resource in array array['organizations','memberships','clients','contacts','opportunities',
-      'quotes','contracts','projects','invoices','payments','expenses'] loop
+      'quotes','contracts','projects','invoices','payments','expenses','proposals'] loop
       foreach operation in array array['read','write','delete','unknown'] loop
         expected := case operation
           when 'read' then true
           when 'write' then resource <> 'memberships' and (
-            member_role='admin' or (member_role='manager' and resource=any(array['clients','contacts','opportunities','quotes','contracts','projects']))
+            member_role='admin' or (member_role='manager' and resource=any(array['clients','contacts','opportunities','quotes','contracts','projects','proposals']))
               or (member_role='accountant' and resource=any(array['invoices','payments','expenses'])))
           when 'delete' then member_role=any(array['admin','manager']) and resource=any(array['clients','contacts','opportunities','projects'])
           else false end;
@@ -163,7 +163,7 @@ declare table_name text; visible integer;
 begin
   if auth.uid() is not null then raise exception 'Unexpected JWT subject'; end if;
   foreach table_name in array array['organizations','profiles','organization_memberships','clients','contacts',
-    'opportunities','quotes','contracts','projects','invoices','payments','expenses'] loop
+    'opportunities','quotes','contracts','projects','invoices','payments','expenses','proposals','proposal_sections','proposal_items','proposal_versions','proposal_templates','proposal_approvals','proposal_documents'] loop
     execute format('select count(*) from public.%I',table_name) into visible;
     if visible <> 0 then raise exception 'Unaffiliated session sees business rows'; end if;
   end loop;
