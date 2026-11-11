@@ -245,7 +245,7 @@ try {
       GOTRUE_SMTP_PORT: String(smtp.port),
       GOTRUE_SMTP_ADMIN_EMAIL: "noreply@example.invalid",
       GOTRUE_SMTP_SENDER_NAME: "Local fixtures",
-      GOTRUE_SMTP_MAX_FREQUENCY: "1s",
+      GOTRUE_SMTP_MAX_FREQUENCY: "0s",
       GOTRUE_RATE_LIMIT_EMAIL_SENT: "100",
       GOTRUE_JWT_SECRET: secret,
       GOTRUE_JWT_ADMIN_ROLES: "service_role",
