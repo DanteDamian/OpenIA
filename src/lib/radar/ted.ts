@@ -22,7 +22,7 @@ export function tedCandidate(input:unknown,today:string):ExternalCandidate|null 
  if(!input||typeof input!=="object"||Array.isArray(input))return null;
  const row=input as Record<string,unknown>;
  const id=clean(row["publication-number"],30);
- if(!/^\d{6}-\d{4}$/.test(id))return null;
+ if(!/^\d{6,8}-\d{4}$/.test(id))return null;
  const title=localize(row["notice-title"]);
  if(!title||!topicPattern.test(title))return null;
  const published=date(row["publication-date"]);
