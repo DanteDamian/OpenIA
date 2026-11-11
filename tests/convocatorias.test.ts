@@ -6,11 +6,11 @@ describe("Convocatorias", () => {
     link:"https://example.com/convocatoria", presentation_date:"2026-12-01", status:"En proceso", responsible:"Daniel Bula" };
   it("expone los campos de seguimiento solicitados", () => {
     expect(resources.convocatorias.fields.map(field => field.name))
-      .toEqual(["name","issuer_name","amount","topic","priority","link","presentation_date","status","responsible"]);
-    expect(resources.convocatorias.listFields).toEqual(["name","amount","responsible","status","presentation_date"]);
+      .toEqual(["name","issuer_name","amount","topic","priority","link","presentation_date","status","responsible","observations"]);
+    expect(resources.convocatorias.listFields).toEqual(["name","amount","priority","responsible","status","presentation_date"]);
   });
   it("acepta importes, prioridades y seguimiento válidos", () => {
-    expect(businessInput("convocatorias", valid)).toMatchObject(valid);
+    expect(businessInput("convocatorias", {...valid,observations:"Seguimiento comercial"})).toMatchObject({...valid,observations:"Seguimiento comercial"});
     expect(businessInput("convocatorias", { ...valid, priority:"medium", link:null, presentation_date:null, status:null, responsible:null })).not.toBeNull();
   });
   it("rechaza dominios, enlaces e importes inválidos", () => {
@@ -19,11 +19,13 @@ describe("Convocatorias", () => {
     expect(businessInput("convocatorias", { ...valid, responsible:"Otra persona" })).toBeNull();
     expect(businessInput("convocatorias", { ...valid, link:"javascript:alert(1)" })).toBeNull();
     expect(businessInput("convocatorias", { ...valid, amount:"-1" })).toBeNull();
+    expect(businessInput("convocatorias", { ...valid, observations:"x".repeat(4001) })).toBeNull();
     expect(businessInput("convocatorias", { ...valid, issuer_name:"" })).toBeNull();
   });
   it("solo permite ordenar por columnas visibles", () => {
     const visible=resources.convocatorias.listFields!;
     expect(businessSort({sort:"amount",direction:"desc"},visible)).toEqual({sort:"amount",direction:"desc"});
+    expect(businessSort({sort:"priority",direction:"asc"},visible)).toEqual({sort:"priority",direction:"asc"});
     expect(businessSort({sort:"organization_id",direction:"desc"},visible)).toEqual({sort:"",direction:"desc"});
     expect(businessSort({sort:"status",direction:"unexpected"},visible)).toEqual({sort:"status",direction:"asc"});
   });
