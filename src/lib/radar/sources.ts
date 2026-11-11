@@ -6,7 +6,7 @@ export const sourceSeeds = [
  {name:"TVEC",country:"Colombia",category:"Contratación",official_url:"https://www.colombiacompra.gov.co/secop/tvec",query_method:"manual",enabled:false},
  {name:"Minciencias Convocatorias",country:"Colombia",category:"Innovación",official_url:"https://minciencias.gov.co/convocatorias/todas",query_method:"manual",enabled:false},
  {name:"IDEAM Contratación",country:"Colombia",category:"Contratación",official_url:"https://www.ideam.gov.co/transparencia/contratacion",query_method:"manual",enabled:false},
- {name:"SERCOP",country:"Ecuador",category:"Contratación",official_url:"https://portal.compraspublicas.gob.ec/",query_method:"manual",enabled:false},
+ {name:"SERCOP",country:"Ecuador",category:"Contratación",official_url:"https://portal.compraspublicas.gob.ec/",query_method:"sercop",enabled:true},
  {name:"SERCOP búsqueda",country:"Ecuador",category:"Contratación",official_url:"https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/buscarProceso.cpe?sg=1",query_method:"manual",enabled:false},
  {name:"SENESCYT convocatorias",country:"Ecuador",category:"Innovación",official_url:"https://siau.senescyt.gob.ec/convocatorias",query_method:"manual",enabled:false},
  {name:"PanamaCompra",country:"Panamá",category:"Contratación",official_url:"https://www.panamacompra.gob.pa/",query_method:"manual",enabled:false},
@@ -17,6 +17,7 @@ export const sourceSeeds = [
  {name:"World Bank Procurement",country:"Internacional",category:"Multilateral",official_url:"https://projects.worldbank.org/en/projects-operations/procurement",query_method:"manual",enabled:false},
  {name:"IDB Procurement",country:"Internacional",category:"Multilateral",official_url:"https://www.iadb.org/en/how-we-can-work-together/procurement",query_method:"manual",enabled:false},
  {name:"CAF Calls",country:"Internacional",category:"Multilateral",official_url:"https://www.caf.com/en/work-with-us/calls/",query_method:"manual",enabled:false},
+ {name:"iNNpulsa Colombia — Convocatorias",country:"Colombia",category:"Emprendimiento e innovación",official_url:"https://convocatorias.innpulsacolombia.com/",query_method:"manual",enabled:false},
 
  {name:"PNCP Brasil — Contratações abertas",country:"Brasil",category:"Contratación",official_url:"https://pncp.gov.br/app/editais",query_method:"pncp",enabled:true},
  {name:"TED — Licitaciones UE",country:"Unión Europea",category:"Contratación",official_url:"https://ted.europa.eu/es/",query_method:"ted",enabled:true},
