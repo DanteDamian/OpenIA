@@ -12,7 +12,7 @@ export async function GET(request:Request) {
  if(!url||!key) return NextResponse.json({error:"Conexión administrativa no configurada"},{status:503});
  // Secret remains server-side; no public client and no user-supplied target URL.
  const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
- const {data:organizations,error}=await db.from("organizations").select("id").order("created_at").limit(20);
+ const {data:organizations,error}=await db.from("organizations").select("id").order("created_at").limit(2);
  if(error) return NextResponse.json({error:"No se pudieron consultar las organizaciones"},{status:503});
  const results=[];
  for(const org of organizations||[]) {
