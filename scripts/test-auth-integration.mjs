@@ -940,8 +940,8 @@ try {
   const existingInviteId=sql(`select id from private.organization_invitations where email='${users.outsider.email}'`);
   await http("Immediate resend is rate limited",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"POST",headers:{Origin:appURL,Cookie:cookie}},429);
   sql(`update private.organization_invitations set updated_at=now()-interval '61 seconds' where id='${existingInviteId}'`);
-  // Reset the real GoTrue OTP cooldown as well (only in disposable local test DB).
-  sql(`update auth.users set recovery_sent_at=now()-interval '61 seconds' where email='${users.outsider.email}'`);
+  // Wait for GoTrue's recipient cooldown, separately from the database invitation throttle.
+  await new Promise(resolve=>setTimeout(resolve,61_000));
   await http("Admin can resend from app",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"POST",headers:{Origin:appURL,Cookie:cookie}});
   await http("Admin can cancel from app",`${appURL}/api/users/invitations/${existingInviteId}`,{method:"DELETE",headers:{Origin:appURL,Cookie:cookie}});
   await http("Cancelled invitation cannot grant membership",rpc("accept_organization_invitation"),{token:users.outsider.token,method:"POST",body:{invitation_id:existingInviteId}},403);
