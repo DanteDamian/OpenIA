@@ -45,7 +45,8 @@ create table public.radar_opportunities (
  service_name text, match_score integer check(match_score between 0 and 100),
  match_reason text, eligibility text, priority text, responsible text, observations text,
  verified_at timestamptz, last_checked_at timestamptz,
- added_to_calls uuid references public.calls_for_proposals(id) on delete restrict,
+ added_to_calls uuid,
+ foreign key (organization_id,added_to_calls) references public.calls_for_proposals(organization_id,id) on delete restrict,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
  foreign key (organization_id,source_id) references public.radar_sources(organization_id,id) on delete restrict,
  unique(organization_id,normalized_url), unique(organization_id,id)
@@ -63,6 +64,7 @@ create index radar_sources_org_idx on public.radar_sources(organization_id);
 create index radar_services_org_idx on public.radar_services(organization_id);
 create index radar_runs_org_idx on public.radar_runs(organization_id,started_at desc);
 create index radar_opportunities_org_source_idx on public.radar_opportunities(organization_id,source_id);
+create index radar_opportunities_added_to_calls_idx on public.radar_opportunities(added_to_calls);
 create index radar_opportunities_org_date_idx on public.radar_opportunities(organization_id,deadline_on);
 create index radar_evidence_org_opportunity_idx on public.radar_evidence(organization_id,opportunity_id);
 -- Standard role/tenant policy, consistent with commercial workspace.
