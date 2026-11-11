@@ -1,10 +1,11 @@
 import {sourceSeeds} from "./sources";
 export type SourceFrequency="daily"|"weekly"|"manual";
-export type SourceMethod="manual"|"socrata"|"pncp"|"ted";
+export type SourceMethod="manual"|"socrata"|"pncp"|"ted"|"sercop";
 export type SourceForm={name:string;official_url:string;country:string;category:string;query_method:SourceMethod;frequency:SourceFrequency;enabled:boolean};
 const apiUrl=sourceSeeds.find(item=>item.query_method==="socrata")!.official_url;
 export const pncpSourceUrl="https://pncp.gov.br/app/editais";
 export const tedOfficialUrl="https://ted.europa.eu/es/";
+export const sercopOfficialUrl="https://portal.compraspublicas.gob.ec/";
 function text(input:unknown,max:number):string|null {
  if(typeof input!=="string")return null;
  const value=input.trim();
@@ -31,12 +32,13 @@ export function sourceInput(value:unknown):SourceForm|null {
  if(Object.keys(raw).some(k=>!fields.includes(k)))return null;
  const name=text(raw.name,200),country=text(raw.country,100),category=text(raw.category,120);
  if(!name||!country||!category||!isPublicSourceUrl(raw.official_url))return null;
- if(raw.query_method!=="manual"&&raw.query_method!=="socrata"&&raw.query_method!=="pncp"&&raw.query_method!=="ted")return null;
+ if(raw.query_method!=="manual"&&raw.query_method!=="socrata"&&raw.query_method!=="pncp"&&raw.query_method!=="ted"&&raw.query_method!=="sercop")return null;
  if(!["daily","weekly","manual"].includes(String(raw.frequency)))return null;
  if(typeof raw.enabled!=="boolean")return null;
  if(raw.query_method==="socrata"&&raw.official_url!==apiUrl)return null;
  if(raw.query_method==="pncp"&&raw.official_url!==pncpSourceUrl)return null;
  if(raw.query_method==="ted"&&raw.official_url!==tedOfficialUrl)return null;
+ if(raw.query_method==="sercop"&&raw.official_url!==sercopOfficialUrl)return null;
  if(raw.query_method==="manual"&&raw.enabled) {
   // Enabled manual sources are catalogued but not automatically scraped.
  }
