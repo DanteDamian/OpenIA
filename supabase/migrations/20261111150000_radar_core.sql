@@ -64,7 +64,7 @@ create index radar_sources_org_idx on public.radar_sources(organization_id);
 create index radar_services_org_idx on public.radar_services(organization_id);
 create index radar_runs_org_idx on public.radar_runs(organization_id,started_at desc);
 create index radar_opportunities_org_source_idx on public.radar_opportunities(organization_id,source_id);
-create index radar_opportunities_added_to_calls_idx on public.radar_opportunities(added_to_calls);
+create index radar_opportunities_added_to_calls_idx on public.radar_opportunities(organization_id,added_to_calls);
 create index radar_opportunities_org_date_idx on public.radar_opportunities(organization_id,deadline_on);
 create index radar_evidence_org_opportunity_idx on public.radar_evidence(organization_id,opportunity_id);
 -- Standard role/tenant policy, consistent with commercial workspace.
