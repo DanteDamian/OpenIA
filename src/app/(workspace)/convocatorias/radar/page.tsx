@@ -2,11 +2,12 @@ import Link from "next/link";
 import {requireAccess} from "@/lib/auth/session";
 import {RadarActions} from "@/features/radar/radar-actions";
 import {directSecopUrl} from "@/lib/radar/secop-details";
+import {orderRadar,parseRadarOrder,radarOrderColumns} from "@/lib/radar/order";
 export const dynamic="force-dynamic";
 type RadarItem={id:string;source_id:string;title:string;description:string|null;country:string;issuer_name:string|null;published_on:string|null;deadline_on:string|null;budget:number|null;currency:string|null;duration_value:number|null;duration_unit:string|null;service_name:string|null;match_score:number|null;verification_status:string;official_url:string;priority:string|null;match_reason:string|null};
 type Source={id:string;name:string;country:string;technical_status:string;last_result:string|null;enabled:boolean;last_checked_at:string|null};
 type Run={id:string;status:string;started_at:string;checked_sources:number;discovered:number;verified:number;error_summary:string|null};
-export default async function RadarPage(){
+export default async function RadarPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
  const a=await requireAccess();
  const org=a.organizationId,db=a.supabase;
  const [opps,sources,runs]=await Promise.all([
@@ -16,6 +17,8 @@ export default async function RadarPage(){
  ]);
  const entries=(opps.data||[]) as RadarItem[],catalog=(sources.data||[]) as Source[],recent=(runs.data||[])[0] as Run|undefined;
  const error=opps.error||sources.error||runs.error;
+ const {sort,direction}=parseRadarOrder(await searchParams);
+ const orderedEntries=orderRadar(entries,catalog,sort,direction);
  const verified=entries.filter(x=>x.verification_status==="Verificada abierta").length;
  return <main className="space-y-6">
   <p className="eyebrow">CONVOCATORIAS / INTELIGENCIA COMERCIAL</p>
@@ -29,8 +32,8 @@ export default async function RadarPage(){
   <section className="card overflow-x-auto p-5"><h2 className="mb-3 text-lg font-semibold">Oportunidades descubiertas</h2>
    <p className="mb-3 text-sm text-slate-600">Objeto, presupuesto base estimado, duración reportada y posible servicio de AIGENTERRA. Estos datos no prueban elegibilidad, contratación ni apertura.</p>
    {!entries.length?<p className="text-sm text-slate-600">Todavía no hay oportunidades verificadas ni candidatas. Inicializa el catálogo y ejecuta una búsqueda real.</p>
-   :<table className="w-full min-w-[1100px] text-left text-sm"><thead><tr>{["Convocatoria y objeto","País","Publicación","Vencimiento","Presupuesto base","Duración estimada","Servicio AIGENTERRA posible","Compatibilidad","Verificación","Fuente / proceso específico"].map(x=><th className="border-b p-2 align-top" key={x}>{x}</th>)}</tr></thead>
-   <tbody>{entries.map(x=>{
+   :<table className="w-full min-w-[1100px] text-left text-sm"><thead><tr>{radarOrderColumns.map(column=><th className="border-b p-2 align-top" key={column.field}><Link className="inline-flex items-center gap-1 underline decoration-slate-300 underline-offset-4 hover:text-teal-800" href={`/convocatorias/radar?sort=${column.field}&direction=${sort===column.field&&direction==="asc"?"desc":"asc"}`} aria-label={`Ordenar por ${column.label}`} aria-sort={sort===column.field?(direction==="asc"?"ascending":"descending"):"none"}>{column.label}<span aria-hidden="true">{sort===column.field?(direction==="asc"?"↑":"↓"):"↕"}</span></Link></th>)}</tr></thead>
+   <tbody>{orderedEntries.map(x=>{
      const link=directSecopUrl(x.official_url);
      const brazilLink=/^https:\/\/pncp\.gov\.br\/app\/editais\/\d{14}\/\d{4}\/\d+$/.test(x.official_url)?x.official_url:null;
      const europeanLink=/^https:\/\/ted\.europa\.eu\/en\/notice\/\d{6,8}-\d{4}\/html$/.test(x.official_url)?x.official_url:null;
