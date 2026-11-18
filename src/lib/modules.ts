@@ -4,6 +4,7 @@ export const modules = [
   {slug:"oportunidades",name:"Oportunidades",icon:"◇",description:"Seguimiento comercial y cierre esperado."},
   {slug:"proyectos",name:"Proyectos",icon:"▧",description:"Presupuestos, relaciones y seguimiento de servicios."},
   {slug:"actividades",name:"Actividades y entregables",icon:"☑",description:"Actividades, hitos, entregables y responsables de proyectos."},
+  {slug:"seguimiento",name:"Seguimiento de horas",icon:"◷",description:"Horas empleadas y actas de consumo por proyecto."},
   {slug:"cotizaciones",name:"Cotizaciones",icon:"◇",description:"Propuestas, importes y aprobación comercial."},
   {slug:"contratos",name:"Contratos",icon:"▤",description:"Acuerdos, fechas y valores contractuales."},
   {slug:"gastos",name:"Gastos",icon:"↗",description:"Egresos reales vinculados a proyectos."},

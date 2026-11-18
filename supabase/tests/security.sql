@@ -24,7 +24,7 @@ begin
     checks := checks + 3;
   end loop;
   if (select count(*) from pg_policy where polrelid in
-      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 63 then
+      (select oid from pg_class where relnamespace='public'::regnamespace)) <> 70 then
     raise exception 'Unexpected policy count';
   end if;
   if exists (select 1 from pg_policy where polrelid in
@@ -50,6 +50,7 @@ begin
     end if;
     checks := checks + 1;
   end loop;
+  if has_table_privilege('authenticated','public.project_hour_acts','INSERT,UPDATE,DELETE') or has_column_privilege('authenticated','public.project_time_entries','act_id','UPDATE') then raise exception 'Acta snapshots or links can be forged'; end if;
   if has_table_privilege('authenticated','public.organization_memberships','INSERT,UPDATE')
     or has_table_privilege('authenticated','public.roles','INSERT,UPDATE')
     or has_table_privilege('authenticated','public.organizations','INSERT')
