@@ -11,7 +11,7 @@ export default async function ActPage({params}:{params:Promise<{id:string}>}){
  if(!validUuid(id))notFound();
  const a=await requireAccess(),db=a.supabase,org=a.organizationId;
  const {data:act,error}=await db.from("project_hour_acts")
-  .select("id,project_id,number,period_from,period_to,total_hours,snapshot,created_at,prepared_by")
+  .select("id,project_id,number,period_from,period_to,total_hours,snapshot,frozen_context,created_at,prepared_by")
   .eq("organization_id",org).eq("id",id).maybeSingle();
  if(error||!act)notFound();
  const {data:project}=await db.from("projects").select("id,name,client_id,contract_id")
@@ -25,6 +25,8 @@ export default async function ActPage({params}:{params:Promise<{id:string}>}){
  ]);
  if(!Array.isArray(act.snapshot))notFound();
  const rows=act.snapshot as SnapshotRow[];
+ const frozen=(act.frozen_context&&typeof act.frozen_context==="object"&&!Array.isArray(act.frozen_context)?act.frozen_context:{}) as Record<string,unknown>;
+ const frozenText=(field:string,fallback:string)=>typeof frozen[field]==="string"?frozen[field] as string:fallback;
  const activityNames=new Map((activities.data||[]).map(v=>[v.id,v.title]));
  const total=rows.reduce((sum,item)=>sum+Number(item.hours||0),0);
  const validTotal=Math.abs(total-Number(act.total_hours))<0.001;
@@ -40,9 +42,9 @@ export default async function ActPage({params}:{params:Promise<{id:string}>}){
    <p className="mt-2 text-sm text-slate-600">Registro generado a partir de horas aprobadas. No representa aceptación ni firma del cliente.</p>
   </header>
   <section className="grid gap-4 rounded-lg border p-5 text-sm sm:grid-cols-2 print:break-inside-avoid">
-   <div><span className="text-slate-500">Cliente</span><p className="font-semibold">{client.data?.legal_name||"No especificado"}</p></div>
-   <div><span className="text-slate-500">Proyecto</span><p className="font-semibold">{project.name}</p></div>
-   <div><span className="text-slate-500">Contrato / orden</span><p>{contract.data?contract.data.number+" — "+contract.data.title:"No asociado"}</p></div>
+   <div><span className="text-slate-500">Cliente</span><p className="font-semibold">{frozenText("client_name",client.data?.legal_name||"No especificado")}</p></div>
+   <div><span className="text-slate-500">Proyecto</span><p className="font-semibold">{frozenText("project_name",project.name)}</p></div>
+   <div><span className="text-slate-500">Contrato / orden</span><p>{frozenText("contract_number",contract.data?.number||"No asociado")}{frozenText("contract_title",contract.data?.title||"")?" — "+frozenText("contract_title",contract.data?.title||""):""}</p></div>
    <div><span className="text-slate-500">Periodo reportado</span><p>{act.period_from} al {act.period_to}</p></div>
    <div><span className="text-slate-500">Emitida el</span><p>{new Date(act.created_at).toLocaleString("es-CO",{timeZone:"America/Bogota"})}</p></div>
    <div><span className="text-slate-500">Horas de esta acta</span><p className="font-semibold">{fmtHours(act.total_hours)}</p></div>
@@ -61,7 +63,7 @@ export default async function ActPage({params}:{params:Promise<{id:string}>}){
   <section className="rounded-lg border p-5 text-sm">
    <h2 className="mb-2 font-semibold">Constancia de consumo</h2>
    <p>Las horas enumeradas corresponden a registros aprobados del proyecto y se incluyen una sola vez en este documento. La copia queda conservada en el sistema para trazabilidad y no se altera cuando se registran nuevas actividades.</p>
-   <p className="mt-3">Horas contratadas de referencia: {setting.data?.contracted_hours==null?"No definidas":fmtHours(setting.data.contracted_hours)}. Este dato es informativo y puede cambiar con nuevas órdenes de servicio.</p>
+   <p className="mt-3">Horas contratadas de referencia: {frozen.contracted_hours===null?"No definidas":frozen.contracted_hours!==undefined?fmtHours(frozen.contracted_hours):setting.data?.contracted_hours==null?"No definidas":fmtHours(setting.data.contracted_hours)}. Este dato corresponde al contrato registrado en el momento de emitir el acta.</p>
   </section>
   <section className="grid gap-8 pt-14 sm:grid-cols-2 print:break-inside-avoid">
    <div className="border-t border-slate-500 pt-3 text-sm"><strong>Elaboró / AIGENTERRA</strong><p>Nombre, cargo y firma: _______________________</p><p>Fecha: _______________________</p></div>
