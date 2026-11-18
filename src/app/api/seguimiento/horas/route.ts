@@ -48,7 +48,7 @@ export async function PATCH(request:Request){
   return error||!data?json({error:"No fue posible cambiar la aprobación."},409):json({id:data.id});
  }
  if(row.action!=="edit"||old.status!=="draft")return json({error:"Solo se pueden editar borradores."},409);
- const {action:_,...payload}=row;
+ const payload=Object.fromEntries(Object.entries(row).filter(([key])=>key!=="action"));
  const input=hourInput(payload);
  if(!input||input.project_id!==old.project_id)return json({error:"Datos o proyecto inválidos."},400);
  if(!await checkProject(a,old.project_id)||!await checkActivity(a,old.project_id,input.work_item_id))
