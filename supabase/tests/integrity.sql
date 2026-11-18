@@ -9,7 +9,7 @@ declare
   ok boolean;
 begin
   select count(*) into count_tables from pg_tables where schemaname = 'public';
-  if count_tables <> 22 then raise exception 'Expected 17 application tables, got %', count_tables; end if;
+  if count_tables <> 25 then raise exception 'Expected 25 application tables, got %', count_tables; end if;
   if (select count(*) from auth.users) <> 0 then raise exception 'Auth users must remain empty'; end if;
   if (select count(*) from public.roles) <> 4 then raise exception 'Role catalog missing'; end if;
 
@@ -59,7 +59,7 @@ begin
 
   for item in select table_name,column_name,numeric_precision,numeric_scale
     from information_schema.columns where table_schema='public' and data_type='numeric' loop
-    if item.numeric_precision <> 18 or item.numeric_scale <> 2 then
+    if item.numeric_scale <> 2 or (item.table_name in ('project_hour_settings','project_time_entries','project_hour_acts') and item.numeric_precision not in (6,10,12)) or (item.table_name not in ('project_hour_settings','project_time_entries','project_hour_acts') and item.numeric_precision <> 18) then
       raise exception 'Incorrect decimal precision on %.%',item.table_name,item.column_name;
     end if;
     checks := checks + 1;
