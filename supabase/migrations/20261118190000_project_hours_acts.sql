@@ -93,8 +93,12 @@ begin
    tbl||'_read',tbl,tbl);
  end loop;
 end $$;
-grant insert,update on public.project_hour_settings,public.project_time_entries to authenticated;
-grant insert on public.project_hour_acts to authenticated;
+grant insert,update on public.project_hour_settings to authenticated;
+grant insert on public.project_time_entries to authenticated;
+-- No direct permission to change project/tenant/author/act links after creation.
+grant update(activity_date,consultant_name,description,hours,status,approved_by,approved_at,work_item_id,updated_at)
+ on public.project_time_entries to authenticated;
+
 do $$
 declare tbl text;
 begin
@@ -108,7 +112,7 @@ end $$;
 -- Actas solo mediante la función transaccional; se deniega INSERT directo.
 revoke insert on public.project_hour_acts from authenticated;
 create or replace function public.issue_project_hour_act(p_organization uuid,p_project uuid,p_from date,p_to date)
-returns uuid language plpgsql security invoker set search_path=public as $$
+returns uuid language plpgsql security definer set search_path=pg_catalog,public as $$
 declare v_user uuid:=auth.uid();v_number integer;v_act uuid;v_total numeric;v_snapshot jsonb;v_project text;
 begin
  if v_user is null or p_from is null or p_to is null or p_to<p_from then raise exception 'Rango de fechas inválido'; end if;
@@ -138,9 +142,7 @@ begin
    and activity_date between p_from and p_to;
  return v_act;
 end $$;
--- Invoker inserts in the act table need INSERT permissions and a restricted policy;
--- callers can only insert their own acts through a controlled function below.
--- The transaction uses a narrowly scoped EXECUTE grant instead of exposing direct writes.
+-- Only SECURITY DEFINER RPC may create actas: it checks auth.uid, active membership, organization and project.\n-- Callers have no direct INSERT grant on the immutable act table.
 grant execute on function public.issue_project_hour_act(uuid,uuid,date,date) to authenticated;
 revoke execute on function public.issue_project_hour_act(uuid,uuid,date,date) from public,anon;
 commit;
