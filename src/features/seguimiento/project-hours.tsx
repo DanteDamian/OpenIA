@@ -41,7 +41,7 @@ export function ProjectHours({project,activities,entries,acts,settings,canEdit}:
  function edit(entry:Entry){setEditId(entry.id);setForm({activity_date:entry.activity_date,work_item_id:entry.work_item_id||"",consultant_name:entry.consultant_name,description:entry.description,hours:String(entry.hours)});window.scrollTo({top:0,behavior:"smooth"});}
  async function issue(e:FormEvent){e.preventDefault();
   const result=await call("/api/seguimiento/actas","POST",{project_id:project.id,from:start,to:end});
-  if(result?.act_id)router.push("/seguimiento/actas/"+result.act_id);
+  if(result?.act_id)router.push("/actas/consumo/"+result.act_id);
  }
  return <div className="space-y-6">
   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -85,7 +85,7 @@ export function ProjectHours({project,activities,entries,acts,settings,canEdit}:
       <td className="p-2">{entry.activity_date}</td><td className="p-2">{activities.find(a=>a.id===entry.work_item_id)?.title||"General"}</td>
       <td className="p-2">{entry.consultant_name}</td><td className="max-w-sm whitespace-pre-wrap break-words p-2">{entry.description}</td>
       <td className="p-2 font-medium">{fmtHours(entry.hours)}</td><td className="p-2">{entry.act_id?"Incluido en acta":entry.status==="approved"?"Aprobado":"Borrador"}</td>
-      <td className="p-2">{entry.act_id?<Link href={"/seguimiento/actas/"+entry.act_id} className="text-teal-800 underline">Consultar</Link>:"—"}</td>
+      <td className="p-2">{entry.act_id?<Link href={"/actas/consumo/"+entry.act_id} className="text-teal-800 underline">Consultar</Link>:"—"}</td>
       <td className="space-x-3 p-2">{canEdit&&!entry.act_id&&<>
        {entry.status==="draft"&&<button className="text-teal-800 underline" onClick={()=>edit(entry)}>Editar</button>}
        <button disabled={busy} className="text-teal-800 underline disabled:opacity-40" onClick={()=>call("/api/seguimiento/horas?id="+entry.id,"PATCH",{action:entry.status==="draft"?"approve":"reopen"})}>{entry.status==="draft"?"Aprobar":"Reabrir"}</button>
@@ -104,7 +104,7 @@ export function ProjectHours({project,activities,entries,acts,settings,canEdit}:
    <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Acta","Periodo","Horas consolidadas","Emisión","Documento"].map(t=><th className="border-b p-3" key={t}>{t}</th>)}</tr></thead><tbody>
     {acts.map(a=><tr key={a.id} className="border-b"><td className="p-3">ACT-{String(a.number).padStart(4,"0")}</td><td className="p-3">{a.period_from} a {a.period_to}</td>
      <td className="p-3">{fmtHours(a.total_hours)}</td><td className="p-3">{new Date(a.created_at).toLocaleDateString("es-CO")}</td>
-     <td className="p-3"><Link href={"/seguimiento/actas/"+a.id} className="text-teal-800 underline">Ver / imprimir</Link></td></tr>)}</tbody></table></div>}
+     <td className="p-3"><Link href={"/actas/consumo/"+a.id} className="text-teal-800 underline">Ver / imprimir</Link></td></tr>)}</tbody></table></div>}
   </section>
  </div>;
 }
