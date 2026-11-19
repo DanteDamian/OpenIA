@@ -16,6 +16,14 @@ export async function relationChoices(supabase: SupabaseClient, org: string, res
   const tables = [...new Set(resources[resource].fields.flatMap(field => field.relation ? [field.relation] : []))];
   const result: Record<string,Choice[]> = {};
   for(const table of tables) {
+    if(table==="organization_memberships") {
+      const {data,error}=await supabase.rpc("list_project_assignees",{target_organization:org});
+      if(error)throw new Error("No fue posible consultar los responsables autorizados.");
+      result[table]=(data||[]).map((member:{user_id:string;display_name:string})=>({
+        id:member.user_id,label:member.display_name
+      }));
+      continue;
+    }
     const label = table === "clients" ? "legal_name" : table === "contacts" ? "full_name"
       : table === "projects" ? "name" : table === "quotes" ? "number" : "title";
     const rows = await allRows(supabase,org,table,`id,${label}${["contacts","opportunities","quotes","contracts","projects"].includes(table) ? ",client_id" : ""}`);
