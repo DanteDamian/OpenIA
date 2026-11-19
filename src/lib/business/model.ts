@@ -53,7 +53,7 @@ export const resources: Record<string, Resource> = {
     { name: "project_id", label: "Proyecto", relation: "projects", type: "uuid", required: true },
     { name: "kind", label: "Tipo", required: true, options: ["activity","deliverable","milestone"] }, title,
     { name: "description", label: "Descripción", type: "textarea", max: 1000 }, status(["pending","in_progress","done","cancelled"]),
-    { name: "assignee_id", label: "Responsable (UUID de miembro autorizado)", type: "uuid" }, { name: "due_on", label: "Fecha límite", type: "date" }] },
+    { name: "assignee_id", label: "Responsable", type: "uuid", relation: "organization_memberships" }, { name: "due_on", label: "Fecha límite", type: "date" }] },
 };
 export const translations: Record<string, string> = {
   high: "Alta", medium: "Media", low: "Baja",
