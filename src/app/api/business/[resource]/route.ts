@@ -19,6 +19,14 @@ async function save(request: Request, context: Context, editing: boolean) {
   // Cada relación se consulta con la sesión real y organización verificadas.
   let relatedClientId = input.client_id;
   for (const field of definition.fields.filter(field => field.relation && input[field.name])) {
+    if(field.relation==="organization_memberships") {
+      const {data:member,error:memberError}=await access.supabase.from("organization_memberships")
+        .select("user_id,is_active").eq("organization_id",access.organizationId)
+        .eq("user_id",input[field.name]!).eq("is_active",true).maybeSingle();
+      if(memberError)return json({error:"No fue posible validar el usuario responsable."},503);
+      if(!member)return json({error:"Selecciona un usuario activo de la empresa."},400);
+      continue;
+    }
     const related = await access.supabase.from(field.relation!).select("*").eq("organization_id",access.organizationId).eq("id",input[field.name]!).maybeSingle();
     if (related.error) return json({ error: "No fue posible validar las relaciones." },503);
     if (!related.data || (relatedClientId && related.data.client_id && related.data.client_id !== relatedClientId))
