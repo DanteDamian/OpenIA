@@ -26,14 +26,14 @@ export default async function KanbanPage({searchParams}:{searchParams:Promise<Re
   db.from("project_time_entries").select("work_item_id,hours")
    .eq("organization_id",org).eq("project_id",selected.id).limit(5000),
   db.from("clients").select("legal_name").eq("organization_id",org).eq("id",selected.client_id).maybeSingle(),
-  db.from("profiles").select("id,display_name").limit(500),
+  db.rpc("list_project_assignees",{target_organization:org}),
  ]);
  const error=workResult.error||hoursResult.error||clientResult.error||profilesResult.error;
  const totalByItem=new Map<string,number>();
  for(const entry of hoursResult.data||[]){
   if(entry.work_item_id)totalByItem.set(entry.work_item_id,(totalByItem.get(entry.work_item_id)||0)+Number(entry.hours));
  }
- const names=new Map((profilesResult.data||[]).map(x=>[x.id,x.display_name]));
+ const names=new Map((profilesResult.data||[]).map((x:{user_id:string;display_name:string})=>[x.user_id,x.display_name]));
  const items=((workResult.data||[]) as KanbanItem[]).map(item=>({...item,hours_logged:totalByItem.get(item.id)||0}));
  const canEdit=["admin","manager"].includes(access.role)&&!["completed","cancelled"].includes(selected.status);
  return <main className="space-y-6">
