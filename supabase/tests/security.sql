@@ -193,7 +193,7 @@ end $$;
 reset role;
 
 -- Nombres para responsables: fixtures limitados a la transacción descartable.
-do $
+do $assignees$
 declare
   company_a uuid := gen_random_uuid();
   company_b uuid := gen_random_uuid();
@@ -240,6 +240,6 @@ begin
   if (select count(*) from private.membership_audit
       where organization_id=company_a and user_id=member_id and action='rename') <> 1
     then raise exception 'Expected a single audited name change'; end if;
-end $;
+end $assignees$;
 
 rollback;
