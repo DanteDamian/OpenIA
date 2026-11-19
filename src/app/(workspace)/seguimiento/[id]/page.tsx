@@ -20,7 +20,7 @@ export default async function ProjectHoursPage({params}:{params:Promise<{id:stri
   project.contract_id?db.from("contracts").select("number,title").eq("organization_id",org).eq("id",project.contract_id).maybeSingle():Promise.resolve({data:null,error:null})
  ]);
  const failed=activities.error||entries.error||acts.error||settings.error||client.error||contract.error;
- return <main className="space-y-6"><Link href="/seguimiento" className="text-sm text-teal-800 underline">← Volver a seguimiento</Link>
+ return <main className="space-y-6"><div className="flex flex-wrap gap-6"><Link href="/seguimiento" className="text-sm text-teal-800 underline">← Volver a seguimiento</Link><Link href={"/kanban?proyecto="+id} className="text-sm font-semibold text-teal-800 underline">Ver tablero Kanban →</Link></div>
   <div><p className="eyebrow">SEGUIMIENTO / PROYECTO</p><h1 className="mt-2 text-3xl font-semibold">{project.name}</h1>
    <p className="mt-2 text-sm text-slate-600">Cliente: {client.data?.legal_name||"Sin registrar"} · Estado: {project.status}
     {contract.data?" · Contrato: "+contract.data.number:" · Sin contrato asociado"}</p></div>
