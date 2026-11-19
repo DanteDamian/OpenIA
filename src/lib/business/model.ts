@@ -72,4 +72,4 @@ export function canWrite(role: string, resource: Resource) {
   return role === "admin" || (resource.permission === "commercial" && role === "manager") || (resource.permission === "finance" && role === "accountant");
 }
 export type BusinessRow = Record<string, string | null> & { id: string };
-export type Choice = { id: string; label: string; clientId?: string | null };
+export type Choice = { id: string; label: string; clientId?: string | null; unavailable?: boolean; };

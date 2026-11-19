@@ -191,4 +191,55 @@ begin
   raise notice 'Authenticated session without membership: SELECT isolation, INSERT denial, role mutation and metadata escalation denial passed';
 end $$;
 reset role;
+
+-- Nombres para responsables: fixtures limitados a la transacción descartable.
+do $assignees$
+declare
+  company_a uuid := gen_random_uuid();
+  company_b uuid := gen_random_uuid();
+  admin_id uuid := gen_random_uuid();
+  member_id uuid := gen_random_uuid();
+  unnamed_id uuid := gen_random_uuid();
+begin
+  insert into auth.users(id) values (admin_id), (member_id), (unnamed_id);
+  insert into public.organizations(id,name,slug) values
+    (company_a, 'Test A', 'test-assignee-a'), (company_b, 'Test B', 'test-assignee-b');
+  update public.profiles set display_name = 'Nombre de perfil' where id = member_id;
+  insert into public.organization_memberships(organization_id,user_id,role_id) values
+    (company_a,admin_id,'admin'), (company_a,member_id,'viewer'),
+    (company_a,unnamed_id,'viewer'), (company_b,member_id,'viewer');
+  if has_function_privilege('anon','public.set_organization_member_display_name(uuid,uuid,text)','EXECUTE')
+      or has_column_privilege('authenticated','public.organization_memberships','display_name','UPDATE') then
+    raise exception 'Assignee names can be changed outside the authorized RPC';
+  end if;
+
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  set local role authenticated;
+  perform public.set_organization_member_display_name(company_a,member_id,'  Nombre en A  ');
+  if (select display_name from public.list_project_assignees(company_a) where user_id=member_id)
+       is distinct from 'Nombre en A' then raise exception 'Expected organization name'; end if;
+  if not exists (select 1 from public.list_project_assignees(company_a) where user_id=unnamed_id and display_name is null)
+    then raise exception 'Expected null name without an ID-based fallback'; end if;
+  if exists (select 1 from public.list_project_assignees(company_b))
+    then raise exception 'Assignees exposed across organizations'; end if;
+  begin
+    perform public.set_organization_member_display_name(company_b,member_id,'Forbidden');
+    raise exception 'Cross-organization name update allowed';
+  exception when insufficient_privilege then null;
+  end;
+
+  perform set_config('request.jwt.claim.sub', member_id::text, true);
+  if (select display_name from public.list_project_assignees(company_b) where user_id=member_id)
+      is distinct from 'Nombre de perfil' then raise exception 'Expected unmodified profile name in B'; end if;
+  begin
+    perform public.set_organization_member_display_name(company_a,member_id,'Forbidden');
+    raise exception 'Non-admin name update allowed';
+  exception when insufficient_privilege then null;
+  end;
+  reset role;
+  if (select count(*) from private.membership_audit
+      where organization_id=company_a and user_id=member_id and action='rename') <> 1
+    then raise exception 'Expected a single audited name change'; end if;
+end $assignees$;
+
 rollback;

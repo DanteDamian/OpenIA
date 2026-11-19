@@ -12,7 +12,7 @@ export function BusinessForm({ resource, choices, row, defaults = {} }: {
     const scoped = field.relation && field.relation !== "clients" && clientId;
     const options = field.options ? field.options.map(value => ({value,label:translations[value] || value}))
       : field.relation ? (choices[field.relation] || []).filter(choice => !scoped || !choice.clientId || choice.clientId === clientId)
-        .map(choice => ({value:choice.id,label:choice.label})) : undefined;
+        .map(choice => ({value:choice.id,label:choice.label,disabled:choice.unavailable && choice.id !== row?.[field.name]})) : undefined;
     const optionalOptions = options ? [{value:"",label:field.required ? "Selecciona…" : field.relation ? "Sin vincular" : "Sin registrar"},...options] : undefined;
     const dependent = field.relation && ["contacts","opportunities","quotes","contracts"].includes(field.relation);
     return { name:field.name,label:field.label,required:field.required,max:field.max || (field.type === "money" ? 19 : 200),
@@ -24,5 +24,5 @@ export function BusinessForm({ resource, choices, row, defaults = {} }: {
     method={row ? "PATCH" : "POST"} fields={fields} validate={input => businessInput(resource,input) !== null}
     validationMessage="Revisa campos obligatorios, relaciones, fechas e importes COP. Usa punto decimal, máximo dos decimales y sin separadores de miles."
     onFieldChange={(name,value) => { if(name === "client_id") setClientId(value); }}
-    successMessage="Registro guardado correctamente." help="Registra información real. Los importes COP usan punto decimal, sin separadores de miles. Los campos opcionales pueden quedar vacíos." />;
+    successMessage="Registro guardado correctamente." help={resource === "actividades" ? "Los usuarios que aún no tienen nombre aparecen como Nombre pendiente. Un administrador puede registrarlo en Usuarios." : "Registra información real. Los importes COP usan punto decimal, sin separadores de miles. Los campos opcionales pueden quedar vacíos."} />;
 }
