@@ -1,4 +1,5 @@
 import { requireAccess } from "@/lib/auth/session";
+import { MemberNameForm } from "@/features/users/member-name-form";
 import { MemberForm } from "@/features/users/member-form";
 import { InvitationActions } from "@/features/users/invitation-actions";
 import { adminConfiguration } from "@/lib/supabase/admin";
@@ -14,7 +15,7 @@ export default async function UsersPage() {
     <p className="mt-3 text-slate-500">Gestiona el acceso a tu empresa. Los cambios quedan auditados y no eliminan información.</p>
     {error ? <p role="alert" className="card mt-6 p-6">No fue posible consultar los usuarios. Intenta nuevamente o contacta al soporte.</p> : <>
       {canInvite ? <MemberForm /> : <p role="alert" className="card mt-6 p-6">El envío de invitaciones no está habilitado todavía. Contacta al responsable de la aplicación para habilitarlo.</p>}
-      <div className="mt-6 grid gap-4">{members.map(member=><article className="card p-6" key={member.user_id}><h2 className="break-words font-semibold">{member.display_name || member.email}</h2><p className="mt-2 break-words text-sm">{member.email}</p><p className="mt-2 text-sm">{roleOptions.find(role=>role.value===member.role_id)?.label} · {member.is_active ? "Activo" : "Suspendido"}{member.user_id===access.userId ? " · Tu cuenta" : ""}</p><MemberForm member={member}/></article>)}</div>
+      <div className="mt-6 grid gap-4">{members.map(member=><article className="card p-6" key={member.user_id}><h2 className="break-words font-semibold">{member.display_name || member.email}</h2><p className="mt-2 break-words text-sm">{member.email}</p><p className="mt-2 text-sm">{roleOptions.find(role=>role.value===member.role_id)?.label} · {member.is_active ? "Activo" : "Suspendido"}{member.user_id===access.userId ? " · Tu cuenta" : ""}</p><MemberNameForm userId={member.user_id} displayName={member.display_name} /><MemberForm member={member}/></article>)}</div>
       {!members.length && <p className="mt-6">No hay membresías disponibles.</p>}
     </>}
     <section className="mt-8"><h2 className="text-xl font-semibold">Invitaciones</h2>

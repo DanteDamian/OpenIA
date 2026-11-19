@@ -33,7 +33,7 @@ export default async function KanbanPage({searchParams}:{searchParams:Promise<Re
  for(const entry of hoursResult.data||[]){
   if(entry.work_item_id)totalByItem.set(entry.work_item_id,(totalByItem.get(entry.work_item_id)||0)+Number(entry.hours));
  }
- const names=new Map((profilesResult.data||[]).map((x:{user_id:string;display_name:string})=>[x.user_id,x.display_name]));
+ const names=new Map((profilesResult.data||[]).map((x:{user_id:string;display_name:string|null})=>[x.user_id,x.display_name ?? "Nombre pendiente"]));
  const items=((workResult.data||[]) as KanbanItem[]).map(item=>({...item,hours_logged:totalByItem.get(item.id)||0}));
  const canEdit=["admin","manager"].includes(access.role)&&!["completed","cancelled"].includes(selected.status);
  return <main className="space-y-6">

@@ -19,8 +19,8 @@ export async function relationChoices(supabase: SupabaseClient, org: string, res
     if(table==="organization_memberships") {
       const {data,error}=await supabase.rpc("list_project_assignees",{target_organization:org});
       if(error)throw new Error("No fue posible consultar los responsables autorizados.");
-      result[table]=(data||[]).map((member:{user_id:string;display_name:string})=>({
-        id:member.user_id,label:member.display_name
+      result[table]=(data||[]).map((member:{user_id:string;display_name:string|null})=>({
+        id:member.user_id,label:member.display_name ?? "Nombre pendiente",unavailable:member.display_name === null
       }));
       continue;
     }

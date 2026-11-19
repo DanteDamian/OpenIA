@@ -3,7 +3,7 @@ import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 export type Field = {
   name: string; label: string; required?: boolean; max: number;
-  type?: "email" | "tel" | "textarea" | "date" | "url"; options?: { value: string; label: string }[];
+  type?: "email" | "tel" | "textarea" | "date" | "url"; options?: { value: string; label: string; disabled?: boolean }[];
   initial?: string | null; autoComplete?: string; readOnly?: boolean;
 };
 type Props = {
@@ -74,7 +74,7 @@ export function RecordForm({ title, triggerLabel, endpoint, method, fields, succ
             defaultValue: field.initial || "", onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => onFieldChange?.(field.name, event.target.value), className: inputClass, autoFocus: index === 0 };
           return <div key={`${field.name}:${field.options?.map(option => option.value).join("|") || ""}`} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
             <label htmlFor={common.id} className="text-sm font-medium">{field.label}{field.required && <span aria-hidden="true"> *</span>}</label>
-            {field.options ? <select {...common}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+            {field.options ? <select {...common}>{field.options.map(option => <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}</select>
               : field.type === "textarea" ? <textarea {...common} maxLength={field.max} rows={3} />
               : <input {...common} readOnly={field.readOnly} type={field.type || "text"} maxLength={field.max} autoComplete={field.autoComplete} />}
           </div>;
