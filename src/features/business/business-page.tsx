@@ -16,6 +16,9 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
   const access=await requireAccess();
   if(id && !validUuid(id)) notFound();
   const options=listOptions(params);
+  const isExpense = resource === "gastos";
+  const expenseScope = isExpense && (params.imputacion === "operacion" || params.imputacion === "proyecto")
+    ? params.imputacion : "";
   const today=resource==="convocatorias" ? bogotaToday() : "";
   const listFields=definition.listFields || [definition.label,definition.statusField || "status"];
   const sorting=businessSort(params,listFields);
@@ -28,6 +31,8 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
   else {
     if(options.q) query=query.ilike(definition.label,`%${literalSearch(options.q)}%`);
     if(filterStatus) query=query.eq(definition.statusField!,filterStatus);
+    if (expenseScope === "operacion") query = query.is("project_id", null);
+    if (expenseScope === "proyecto") query = query.not("project_id", "is", null);
   }
   const {data,error,count}=await query
     .order(sorting.sort || "created_at",{ascending:sorting.sort ? sorting.direction === "asc" : false,nullsFirst:false})
@@ -41,6 +46,7 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
   const canEdit=canWrite(access.role,definition) && !error && !choiceError;
   const display=(key:string,value:string|null) => {
     const field=definition.fields.find(field=>field.name===key);
+    if (!value && isExpense && key === "project_id") return "Operación de la empresa";
     if(!value) return "Sin registrar";
     if(field?.relation) return choices[field.relation]?.find(choice=>choice.id===value)?.label || "Relación no disponible";
     if(field?.type === "money" || key === "total") { try{return formatMoney(cents(value));}catch{return "Importe inválido";} }
@@ -70,6 +76,7 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
     if(options.q) search.set("q",options.q);
     if(filterStatus) search.set("status",filterStatus);
     if(projectFilter) search.set("project_id",projectFilter);
+    if (expenseScope) search.set("imputacion", expenseScope);
     return `/${resource}?${search}`;
   };
   return <>
@@ -79,12 +86,19 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
     {resource==="convocatorias" && !id && <Link href="/convocatorias/radar" className="mt-3 inline-flex rounded-lg border border-teal-700 px-4 py-2 font-semibold text-teal-800">Abrir Radar GeoIA →</Link>}
     {error && <p role="alert" className="card mt-6 p-6 text-red-700">No fue posible consultar los registros.</p>}
     {choiceError && <p role="alert" className="card mt-6 p-6 text-red-700">No fue posible cargar las relaciones. Recarga antes de guardar.</p>}
-    {canEdit && <BusinessForm resource={resource} choices={choices} row={id ? row : undefined} defaults={projectFilter ? {project_id:projectFilter} : {}} />}
+    {canEdit && <BusinessForm resource={resource} choices={choices} row={id ? row : undefined} defaults={projectFilter ? {project_id:projectFilter} : isExpense && !id ? {status:"recorded"} : {}} />}
     {!id && <form key={`${options.q}:${filterStatus}`} method="get" className="mt-6 flex flex-wrap gap-3">
       {projectFilter && <input type="hidden" name="project_id" value={projectFilter} />}
       {sorting.sort && <><input type="hidden" name="sort" value={sorting.sort} /><input type="hidden" name="direction" value={sorting.direction} /></>}
       <label className="text-sm">Buscar<input name="q" type="search" maxLength={100} defaultValue={options.q} className="ml-2 rounded-lg border bg-white p-3" /></label>
       <label className="text-sm">Estado<select name="status" defaultValue={filterStatus} className="ml-2 rounded-lg border bg-white p-3"><option value="">Todos</option>{allowedStatuses.map(value=><option key={value} value={value}>{translations[value] || value}</option>)}</select></label>
+      {isExpense && <label className="text-sm">Imputación
+        <select name="imputacion" defaultValue={expenseScope} className="ml-2 rounded-lg border bg-white p-3">
+          <option value="">Todas</option>
+          <option value="operacion">Operación de la empresa</option>
+          <option value="proyecto">Gastos de proyecto</option>
+        </select>
+      </label>}
       <button type="submit" className="button-primary">Buscar</button><Link href={`/${resource}`} className="p-3 text-sm underline">Limpiar</Link>
     </form>}
     {!error && <section className="card mt-6 overflow-x-auto p-6">
@@ -97,7 +111,7 @@ export async function BusinessPage({resource,params={},id}: {resource:string;par
             <Link href={listHref(fieldName)} className="inline-flex items-center gap-1 underline decoration-slate-300 underline-offset-4">{field?.label || fieldName}<span aria-hidden="true">{active ? (sorting.direction === "asc" ? "↑" : "↓") : "↕"}</span></Link>
           </th>;
         })}<th scope="col" className="p-3">Consulta</th></tr></thead><tbody>{rows.map(item=><tr key={item.id} className="border-t">{listFields.map(fieldName=><td key={fieldName} className="p-3 align-top">{listValue(fieldName,item)}</td>)}<td className="p-3"><Link href={`/${resource}/${item.id}`} className="text-teal-800 underline">Ver detalle</Link></td></tr>)}</tbody></table>}
-      {!id && <Pagination base={`/${resource}`} options={{...options,status:filterStatus}} total={count || 0} extra={{...(projectFilter ? {project_id:projectFilter} : {}),...(sorting.sort ? {sort:sorting.sort,direction:sorting.direction} : {})}} />}
+      {!id && <Pagination base={`/${resource}`} options={{...options,status:filterStatus}} total={count || 0} extra={{...(projectFilter ? {project_id:projectFilter} : {}),...(expenseScope ? {imputacion:expenseScope} : {}),...(sorting.sort ? {sort:sorting.sort,direction:sorting.direction} : {})}} />}
     </section>}
     {id && resource === "proyectos" && <section className="card mt-6 p-6"><h2 className="font-semibold">Seguimiento del proyecto</h2><div className="mt-3 flex flex-wrap gap-5"><Link href={`/actividades?project_id=${id}`} className="inline-block text-teal-800 underline">Actividades, entregables e hitos</Link><Link href={`/seguimiento/${id}`} className="inline-block font-semibold text-teal-800 underline">Horas ejecutadas y actas →</Link><Link href={`/kanban?proyecto=${id}`} className="inline-block font-semibold text-teal-800 underline">Tablero Kanban →</Link></div><p className="mt-2 text-sm text-slate-500">Presupuesto registrado: {display("budget",row.budget)}</p>{projectSummary ? <p className="mt-2 text-sm">Gastos registrados: {projectSummary.expenses} · Avance de actividades: {projectSummary.completedItems} de {projectSummary.totalItems} finalizadas.</p> : <p role="alert" className="mt-2 text-sm text-red-700">No fue posible calcular los indicadores del proyecto.</p>}</section>}
   </>;
