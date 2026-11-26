@@ -24,6 +24,21 @@ describe("Módulos operativos",()=>{
     expect(canWrite("manager",resources[key])).toBe(resources[key].permission==="commercial");
     expect(canWrite("accountant",resources[key])).toBe(resources[key].permission==="finance");
   });
+  it("registra gastos de operación sin proyecto y conserva la imputación cuando se selecciona uno", () => {
+    const expense = valid.gastos;
+    expect(businessInput("gastos", expense)?.project_id).toBeNull();
+    expect(businessInput("gastos", {...expense, project_id: id})?.project_id).toBe(id);
+    const summary = analyze({
+      projects: [{id, name: "Local", status: "active", budget: "1.01"}],
+      expenses: [
+        {id: "operating", project_id: null, status: "recorded", amount: "10.00"},
+        {id: "project", project_id: id, status: "recorded", amount: "1.01"},
+      ],
+    });
+    expect(summary.expenses).toBe(formatMoney(1101n));
+    expect(summary.projectSummary[0].expenses).toBe(formatMoney(101n));
+    expect(summary.alerts).toEqual([]);
+  });
   it("maneja importes grandes y centavos sin redondear a Number",()=>{
     expect(cents("9999999999999999.99")).toBe(999999999999999999n);
     expect(cents("0.10")+cents("0.20")).toBe(30n);

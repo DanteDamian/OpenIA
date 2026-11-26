@@ -37,8 +37,9 @@ export const resources: Record<string, Resource> = {
   proyectos: { table: "projects", title: "Proyectos", label: "name", permission: "commercial", statusField: "status", fields: [client,
     { name: "name", label: "Nombre", required: true, max: 200 }, { name: "contract_id", label: "Contrato del cliente", relation: "contracts", type: "uuid" },
     status(["planned","active","paused","completed","cancelled"]), ...dates, money("budget", "Presupuesto COP")] },
-  gastos: { table: "expenses", title: "Gastos", label: "description", permission: "finance", statusField: "status", fields: [
-    { name: "project_id", label: "Proyecto", relation: "projects", type: "uuid" }, { name: "supplier_name", label: "Proveedor", required: true, max: 200 },
+  gastos: { table: "expenses", title: "Gastos", label: "description", permission: "finance", statusField: "status",
+    listFields: ["incurred_on", "description", "project_id", "category", "amount", "status"], fields: [
+    { name: "project_id", label: "Imputación", relation: "projects", type: "uuid" }, { name: "supplier_name", label: "Proveedor", required: true, max: 200 },
     { name: "description", label: "Descripción", required: true, type: "textarea", max: 1000 }, { name: "category", label: "Categoría", required: true, max: 100 },
     money("amount", "Valor COP", true), { name: "incurred_on", label: "Fecha", type: "date", required: true },
     { name: "reference", label: "Referencia / soporte", max: 120 }, status(["recorded","void"])] },
